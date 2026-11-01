@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#d85a12">
+<title>Family Emergency Supply Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: a field-notebook ledger — summary strip up top, then items grouped by category as compact rows you can operate with one thumb. */
+:root{
+  --bg:#f3f2ec; --panel:#ffffff; --line:#d9d7cc; --fg:#1f241f; --muted:#6b7068;
+  --accent:#d85a12; --accent-ink:#ffffff; --soft:#f8ece3;
+  --good:#2f7d4f; --warn:#b7791f; --crit:#b3261e; --good-bg:#e6f2ea; --warn-bg:#fbf0d9; --crit-bg:#fae3e1;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Barlow","Helvetica Neue",Arial,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#171a17; --panel:#20241f; --line:#363b34; --fg:#ecebe3; --muted:#9ea398;
+  --accent:#f0773a; --accent-ink:#1a1410; --soft:#2e241c;
+  --good:#6cc08b; --warn:#e0a94a; --crit:#ef7d75; --good-bg:#1d3326; --warn-bg:#3a2e14; --crit-bg:#41201d;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#171a17; --panel:#20241f; --line:#363b34; --fg:#ecebe3; --muted:#9ea398;
+  --accent:#f0773a; --accent-ink:#1a1410; --soft:#2e241c;
+  --good:#6cc08b; --warn:#e0a94a; --crit:#ef7d75; --good-bg:#1d3326; --warn-bg:#3a2e14; --crit-bg:#41201d;
+  color-scheme:dark}
+*{box-sizing:border-box}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.4;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+.wrap{max-width:860px;margin:0 auto}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;padding-block:22px 10px;border-bottom:2px solid var(--fg)}
+h1{font-family:var(--display);font-weight:700;font-size:30px;letter-spacing:.3px;margin:0;text-wrap:balance}
+.sub{color:var(--muted);font-size:13px}
+.sub b{color:var(--fg)}
+.sub input{width:3.2em;font:inherit;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:1px 4px;text-align:center;font-variant-numeric:tabular-nums}
+.status{font-size:12px;color:var(--muted);margin-left:auto}
+
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+@media (max-width:560px){.tiles{grid-template-columns:repeat(2,1fr)}}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 12px;min-width:0}
+.tile .lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.tile .val{font-family:var(--display);font-size:30px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums;margin-top:2px}
+.tile .val small{font-size:15px;font-weight:600;color:var(--muted);margin-left:3px}
+.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;background:var(--accent)}
+.bar.g i{background:var(--good)}
+.tile .hint{font-size:12px;color:var(--muted);margin-top:5px}
+
+.alert{margin-top:12px;border-radius:6px;padding:10px 12px;font-size:14px;display:none}
+.alert.show{display:block}
+.alert.crit{background:var(--crit-bg);color:var(--fg);border-left:4px solid var(--crit)}
+.alert.warn{background:var(--warn-bg);color:var(--fg);border-left:4px solid var(--warn)}
+.alert b{font-weight:600}
+
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:16px;position:sticky;top:0;background:var(--bg);padding-block:8px;z-index:5}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;font-size:13px;font-weight:500;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer}
+.chip.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.toolbar select{font:inherit;font-size:13px;padding:5px 8px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--fg)}
+.btn{font:inherit;font-size:13px;font-weight:600;padding:6px 12px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn:focus-visible,.chip:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.spacer{flex:1}
+.menu{position:relative}
+.menu .pop{display:none;position:absolute;right:0;top:110%;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px;min-width:190px;z-index:6;box-shadow:0 6px 18px rgba(0,0,0,.12)}
+.menu.open .pop{display:grid;gap:4px}
+.menu .pop button{text-align:left;width:100%}
+
+section.cat{margin-top:18px}
+section.cat h2{font-family:var(--display);font-size:20px;font-weight:700;margin:0 0 6px;display:flex;align-items:baseline;gap:10px}
+section.cat h2 span{font-family:var(--body);font-size:12px;font-weight:500;color:var(--muted);letter-spacing:.04em}
+.row{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin-top:6px;display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center}
+.row.done{border-left:4px solid var(--good)}
+.row.partial{border-left:4px solid var(--warn)}
+.row.todo{border-left:4px solid var(--line)}
+.row .name{font-weight:600;min-width:0;overflow-wrap:anywhere}
+.row .name a{color:inherit;text-decoration:none;border-bottom:1px dotted var(--muted)}
+.row .meta{grid-column:1;font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+.pill{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.04em;padding:1px 7px;border-radius:999px;background:var(--soft);color:var(--fg)}
+.pill.good{background:var(--good-bg);color:var(--good)}
+.pill.warn{background:var(--warn-bg);color:var(--warn)}
+.pill.crit{background:var(--crit-bg);color:var(--crit)}
+.qty{grid-row:1/3;grid-column:2;display:flex;align-items:center;gap:4px}
+.qty button{width:30px;height:30px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit;font-size:16px;cursor:pointer}
+.qty .n{font-family:var(--display);font-size:22px;font-weight:700;min-width:3.6em;text-align:center;font-variant-numeric:tabular-nums}
+.qty .n small{font-size:13px;color:var(--muted);font-family:var(--body);font-weight:500}
+.row .more{grid-column:1/3;display:none;border-top:1px dashed var(--line);margin-top:6px;padding-top:8px}
+.row.open .more{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.more label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);display:block}
+.more input,.more select,.more textarea{width:100%;font:inherit;font-size:14px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:5px 6px}
+.more .full{grid-column:1/-1}
+.more .acts{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
+.btn.danger{color:var(--crit)}
+.toggle{font:inherit;font-size:12px;color:var(--muted);background:none;border:0;cursor:pointer;padding:0;text-decoration:underline}
+
+.empty{margin-top:24px;padding:22px;border:1px dashed var(--line);border-radius:6px;color:var(--muted);text-align:center}
+dialog{border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--fg);width:min(92vw,520px);padding:16px}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog h3{font-family:var(--display);font-size:22px;margin:0 0 10px}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.form label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);display:block}
+.form input,.form select{width:100%;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:6px}
+.form .full{grid-column:1/-1}
+.form .acts{grid-column:1/-1;display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+.toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+footer{margin-top:28px;font-size:12px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Family Emergency Supply Tracker</h1>
+  <div class="sub">Sized for <b><input id="people" type="number" min="1" max="12" value="4" aria-label="people"></b> people · 1 gal water and 2,000 cal per person per day</div>
+  <div class="status" id="status">Saved on this device</div>
+</header>
+
+<div class="tiles">
+  <div class="tile"><div class="lbl">Water on hand</div><div class="val" id="tWater">0<small>days</small></div><div class="bar"><i id="bWater" style="width:0%"></i></div><div class="hint" id="hWater">0 gal stored · goal 14 days</div></div>
+  <div class="tile"><div class="lbl">Food on hand</div><div class="val" id="tFood">0<small>days</small></div><div class="bar"><i id="bFood" style="width:0%"></i></div><div class="hint" id="hFood">0 cal stored · goal 30 days</div></div>
+  <div class="tile"><div class="lbl">Items complete</div><div class="val" id="tItems">0<small>/ 0</small></div><div class="bar g"><i id="bItems" style="width:0%"></i></div><div class="hint" id="hItems">0 partially bought</div></div>
+  <div class="tile"><div class="lbl">Spent so far</div><div class="val" id="tSpent">$0</div><div class="bar"><i id="bSpent" style="width:0%"></i></div><div class="hint" id="hSpent">of $0 planned</div></div>
+</div>
+
+<div class="alert" id="alert"></div>
+
+<div class="toolbar">
+  <div class="chips" id="monthChips"></div>
+  <select id="catFilter" aria-label="Category"><option value="">All categories</option></select>
+  <select id="stateFilter" aria-label="Status"><option value="">All items</option><option value="todo">Still to buy</option><option value="partial">Partly bought</option><option value="done">Complete</option><option value="exp">Expiring / expired</option></select>
+  <span class="spacer"></span>
+  <button class="btn primary" id="addBtn">+ Add item</button>
+  <div class="menu" id="menu"><button class="btn" id="menuBtn" aria-haspopup="true">⋯</button>
+    <div class="pop">
+      <button class="btn" id="exportBtn">Export backup (.json)</button>
+      <button class="btn" id="importBtn">Import backup</button>
+      <button class="btn" id="resetBtn">Reset to the plan's list</button>
+    </div></div>
+  <input type="file" id="importFile" accept="application/json" hidden>
+</div>
+
+<div id="list"></div>
+
+<footer>Data lives in this browser only. Export a backup now and then, and import it on your other devices. Prices are from the Nov 1, 2026 plan; edit any item to update them.</footer>
+</div>
+
+<dialog id="dlg">
+  <h3 id="dlgTitle">Add item</h3>
+  <form class="form" id="form" method="dialog">
+    <div class="full"><label for="fName">Item</label><input id="fName" required></div>
+    <div><label for="fCat">Category</label><select id="fCat"></select></div>
+    <div><label for="fMonth">Buy in month</label><select id="fMonth"></select></div>
+    <div><label for="fTarget">Target qty</label><input id="fTarget" type="number" min="0" step="1" value="1"></div>
+    <div><label for="fPrice">Price each ($)</label><input id="fPrice" type="number" min="0" step="0.01"></div>
+    <div><label for="fGal">Gallons each (water)</label><input id="fGal" type="number" min="0" step="0.1"></div>
+    <div><label for="fCal">Calories each (food)</label><input id="fCal" type="number" min="0" step="100"></div>
+    <div><label for="fShelf">Shelf life (years)</label><input id="fShelf" type="number" min="0" step="0.5"></div>
+    <div><label for="fLink">Link</label><input id="fLink" type="url" placeholder="https://"></div>
+    <div class="full"><label for="fNotes">Notes</label><input id="fNotes"></div>
+    <div class="acts"><button type="button" class="btn" id="dlgCancel">Cancel</button><button type="submit" class="btn primary">Save</button></div>
+  </form>
+</dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+const CATS=["Water","Food: grab-and-go","Food: meals","Food: staples","Cooking, light & power","First aid & sanitation","Comms, tools & documents"];
+const MONTHS=["1","2","3","4","5","6","7","8","9","10+"];
+// Seed: the Family Emergency Supply Plan, Nov 1 2026. [id, name, category index, month, target, price each, gallons each, calories each, shelf years, link]
+const W="https://www.walmart.com/ip/";
+const SEED=[
+ ["aqua","Reliance Aqua-Tainer 7 gal jug",0,"1",6,19.88,7,0,0,W+"872426"],
+ ["sawyer","Sawyer Squeeze water filter",0,"1",1,45.99,0,0,0,W+"21811663"],
+ ["mini","Sawyer Mini filter (car kit)",0,"9",1,16.99,0,0,0,W+"46446042"],
+ ["bottled","Bottled water, 40-pack case",0,"1",4,5,5.3,0,1.5,""],
+ ["bleach","Unscented bleach, 1 gal",0,"1",1,5,0,0,1,""],
+ ["carrier","Collapsible 5 gal water carrier",0,"9",1,15,0,0,0,""],
+ ["datrex","Datrex 3,600-cal ration bar",1,"1",6,7.5,0,3600,5,"https://www.sosproducts.com/Datrex-Food-Bar-3600-Calorie-Each-p/35025.htm"],
+ ["af48","Augason Farms 48-Hour 4-Person kit",1,"1",1,27.38,0,8000,25,W+"152516239"],
+ ["pb","Peanut butter, 40 oz jar",1,"4",3,7,0,6700,2,""],
+ ["canmeat","Canned meat (chicken, tuna, Spam)",1,"4",24,2.5,0,250,4,""],
+ ["af30","Augason Farms 30-Day 1-Person kit (307 servings)",2,"4",5,148.49,0,55630,25,W+"20532432"],
+ ["mh3","Mountain House 3-Day kit (18 servings)",2,"10+",2,69.99,0,5100,30,W+"54905552"],
+ ["rice","Augason Farms white rice, 4-gal pail",3,"6",2,54.61,0,39270,30,W+"22001476"],
+ ["oats","Augason Farms quick oats, 4-gal pail",3,"5",1,20.59,0,19000,25,W+"152516239"],
+ ["beans","Augason Farms black beans, 4-gal pail",3,"6",1,57.74,0,31000,30,W+"869264392"],
+ ["moo","Morning Moo's milk alternative, #10 can",3,"5",2,15.94,0,9000,20,W+"21777157"],
+ ["potato","Potato Gems mashed potatoes, #10 can",3,"9",1,38.75,0,6400,10,W+"477277413"],
+ ["hsc","Church home storage center case (rice/wheat/beans)",3,"10+",3,40,0,26000,30,"https://www.churchofjesuschrist.org/study/manual/food-and-water-storage/home-storage-centers-prices-and-locations"],
+ ["sugar","Sugar, 25 lb (repack in mylar)",3,"9",1,18,0,43000,30,""],
+ ["salt","Salt, 4 lb",3,"9",2,3,0,0,99,""],
+ ["oil","Cooking oil / coconut oil",3,"9",2,10,0,15000,1.5,""],
+ ["spice","Bouillon, spices, honey, coffee/tea",3,"9",1,40,0,0,2,""],
+ ["mylar","Mylar bags + oxygen absorbers, 5-gal 15-pack",3,"9",1,47,0,0,0,"https://wallabygoods.com/products/5-gallon-mylar-zipper-bag-bundle"],
+ ["stove","Coleman Classic 2-burner propane stove",4,"2",1,85,0,0,0,"https://www.campmor.com/products/coleman-classic-propane-gas-camping-stove-2-burner"],
+ ["tank","20 lb propane tank, filled",4,"2",2,45,0,0,0,""],
+ ["hose","Propane adapter hose (tank to stove)",4,"2",1,20,0,0,0,""],
+ ["cyl","1 lb propane cylinders, 4-pack",4,"2",1,20,0,0,0,""],
+ ["jackery","Jackery Explorer 1000 v2 power station",4,"10+",1,450,0,0,0,"https://slickdeals.net/f/19448718-jackery-explorer-1000-v2-portable-power-station-1070wh-lifepo4-battery-428-99"],
+ ["solar","100 W solar panel",4,"10+",1,175,0,0,0,""],
+ ["lantern","LED lantern",4,"2",3,15,0,0,0,""],
+ ["headlamp","Headlamp",4,"2",4,12,0,0,0,""],
+ ["batt","Lithium AA/AAA batteries, pack",4,"9",2,25,0,0,20,""],
+ ["heater","Mr. Heater Buddy indoor-safe heater",4,"8",1,100,0,0,0,""],
+ ["co","Carbon monoxide detector (battery)",4,"8",1,25,0,0,7,""],
+ ["blanket","Wool blanket or 20°F sleeping bag",4,"8",4,30,0,0,0,""],
+ ["fire","Lighters, waterproof matches, ferro rod",4,"2",1,15,0,0,0,""],
+ ["pots","Cast iron skillet + large pot",4,"2",1,40,0,0,0,""],
+ ["myfak","My Medic MyFAK first aid kit",5,"7",1,150,0,0,5,"https://www.beprepared.com/collections/all/products/my-medic-myfak-first-aid-kit"],
+ ["otc","OTC meds (pain, fever, allergy, Imodium, electrolytes)",5,"3",1,50,0,0,1,""],
+ ["rx","30-day extra supply of prescriptions",5,"3",1,0,0,0,1,""],
+ ["loo","Reliance Luggable Loo bucket toilet",5,"3",1,27.99,0,0,0,W+"12863573053"],
+ ["doodie","Double Doodie toilet bags, 6-pack",5,"3",3,18,0,0,0,""],
+ ["tp","Toilet paper, large pack",5,"3",2,20,0,0,0,""],
+ ["trash","Contractor trash bags, box",5,"3",1,20,0,0,0,""],
+ ["wipes","Hand sanitizer, baby wipes, bar soap",5,"3",1,30,0,0,2,""],
+ ["fem","Feminine hygiene, 3-month supply",5,"3",1,30,0,0,0,""],
+ ["ppe","Nitrile gloves + N95 masks",5,"7",1,30,0,0,5,""],
+ ["buckets","5-gallon buckets with lids",5,"3",4,5,0,0,0,""],
+ ["shock","Pool shock (calcium hypochlorite), 1 lb",5,"9",1,8,0,0,0,""],
+ ["radio","Midland ER310 crank/solar weather radio",6,"7",1,70,0,0,0,"https://www.sportsmans.com/camping-gear-supplies/electronics/weather-radios-weather-stations/midland-er310-eready-emergency-crank-weather-radio/p/1519099"],
+ ["walkie","Midland FRS/GMRS walkie-talkies, 3-pack",6,"7",1,75,0,0,0,""],
+ ["bank","USB battery bank, 20,000 mAh",6,"9",2,30,0,0,0,""],
+ ["carchg","Car phone chargers",6,"9",2,10,0,0,0,""],
+ ["tool","Multi-tool + fixed-blade knife",6,"9",1,60,0,0,0,""],
+ ["tape","Duct tape, paracord, 2 tarps, zip ties",6,"9",1,50,0,0,0,""],
+ ["ext","Fire extinguisher, ABC 5 lb",6,"8",1,35,0,0,12,""],
+ ["wrench","Gas and water shutoff wrench",6,"9",1,15,0,0,0,""],
+ ["cash","Cash in small bills ($100 units)",6,"10+",4,100,0,0,0,""],
+ ["docs","Waterproof document pouch + copies + USB drive",6,"7",1,15,0,0,0,""]
+];
+function seedItems(){const o={};SEED.forEach(r=>{o[r[0]]={id:r[0],name:r[1],category:CATS[r[2]],month:r[3],target:r[4],have:0,price:r[5],gallons:r[6]||null,calories:r[7]||null,shelf:r[8]||null,link:r[9]||null,notes:null,purchased:null,expires:null}});return o}
+
+const $=id=>document.getElementById(id);
+const KEY="supplyTracker.v1";
+let items={}, settings={people:4}, filterMonth="", filterCat="", filterState="", openId=null;
+const today=()=>new Date().toISOString().slice(0,10);
+const money=n=>"$"+Math.round(n).toLocaleString();
+const dlg=$("dlg"), form=$("form");
+
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY)||"null");if(s&&s.items){items=s.items;settings=s.settings||settings;return}}catch(e){}items=seedItems()}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify({items,settings,saved:new Date().toISOString()}));$("status").textContent="Saved on this device"}catch(e){$("status").textContent="Couldn't save (storage blocked)"}}
+
+// chips / selects
+MONTHS.forEach(m=>{const b=document.createElement("button");b.className="chip";b.textContent="Mo "+m;b.dataset.m=m;b.onclick=()=>{filterMonth=filterMonth===m?"":m;render()};$("monthChips").appendChild(b)});
+const allChip=document.createElement("button");allChip.className="chip";allChip.textContent="All";allChip.onclick=()=>{filterMonth="";render()};$("monthChips").prepend(allChip);
+CATS.forEach(c=>{const o=document.createElement("option");o.value=c;o.textContent=c;$("catFilter").appendChild(o);$("fCat").appendChild(o.cloneNode(true))});
+MONTHS.forEach(m=>{const o=document.createElement("option");o.value=m;o.textContent="Month "+m;$("fMonth").appendChild(o)});
+$("catFilter").onchange=e=>{filterCat=e.target.value;render()};
+$("stateFilter").onchange=e=>{filterState=e.target.value;render()};
+try{const s=JSON.parse(localStorage.getItem("supplyTracker.filters")||"{}");filterMonth=s.m||"";filterCat=s.c||"";filterState=s.s||"";$("catFilter").value=filterCat;$("stateFilter").value=filterState}catch(e){}
+function saveFilters(){try{localStorage.setItem("supplyTracker.filters",JSON.stringify({m:filterMonth,c:filterCat,s:filterState}))}catch(e){}}
+
+function toast(t){const el=$("toast");el.textContent=t;el.classList.add("show");clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove("show"),1800)}
+function stateOf(it){const have=+it.have||0,target=+it.target||0;if(target>0&&have>=target)return"done";if(have>0)return"partial";return"todo"}
+function expState(it){if(!it.expires)return"";const d=(new Date(it.expires)-new Date(today()))/864e5;if(d<0)return"crit";if(d<90)return"warn";return""}
+function fmtDate(s){if(!s)return"";const d=new Date(s+"T00:00:00");return d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+
+function render(){
+  saveFilters();
+  document.querySelectorAll("#monthChips .chip").forEach(b=>b.classList.toggle("on",(b.dataset.m||"")===filterMonth));
+  const list=Object.values(items);
+  const people=+settings.people||4;
+  let gal=0,cal=0,done=0,part=0,spent=0,planned=0,expSoon=[],expired=[];
+  list.forEach(it=>{const h=+it.have||0,t=+it.target||0,p=+it.price||0;gal+=h*(+it.gallons||0);cal+=h*(+it.calories||0);spent+=h*p;planned+=t*p;const s=stateOf(it);if(s==="done")done++;else if(s==="partial")part++;const e=expState(it);if(e==="crit")expired.push(it.name);else if(e==="warn")expSoon.push(it.name)});
+  const wd=gal/people, fd=cal/(people*2000);
+  $("tWater").innerHTML=wd.toFixed(1)+"<small>days</small>";$("bWater").style.width=Math.min(100,wd/14*100)+"%";$("hWater").textContent=Math.round(gal)+" gal stored · goal 14 days ("+(people*14)+" gal)";
+  $("tFood").innerHTML=fd.toFixed(1)+"<small>days</small>";$("bFood").style.width=Math.min(100,fd/30*100)+"%";$("hFood").textContent=Math.round(cal).toLocaleString()+" cal stored · goal 30 days";
+  $("tItems").innerHTML=done+"<small>/ "+list.length+"</small>";$("bItems").style.width=(list.length?done/list.length*100:0)+"%";$("hItems").textContent=part+" partially bought";
+  $("tSpent").textContent=money(spent);$("bSpent").style.width=(planned?Math.min(100,spent/planned*100):0)+"%";$("hSpent").textContent="of "+money(planned)+" planned";
+  const al=$("alert");al.className="alert";
+  if(expired.length){al.classList.add("show","crit");al.innerHTML="<b>Expired:</b> "+esc(expired.join(", "))+". Replace and update the date."}
+  else if(expSoon.length){al.classList.add("show","warn");al.innerHTML="<b>Expiring within 90 days:</b> "+esc(expSoon.join(", "))+". Eat, rotate, and buy fresh."}
+  const host=$("list");host.innerHTML="";
+  const shown=list.filter(it=>(!filterMonth||String(it.month)===filterMonth)&&(!filterCat||it.category===filterCat)&&(!filterState||(filterState==="exp"?!!expState(it):stateOf(it)===filterState)));
+  if(!list.length){host.innerHTML='<div class="empty">No items yet. Tap “Add item”, or use the ⋯ menu to reset to the plan\'s list.</div>';return}
+  if(!shown.length){host.innerHTML='<div class="empty">Nothing matches these filters.</div>';return}
+  CATS.forEach(cat=>{
+    const rows=shown.filter(it=>it.category===cat).sort((a,b)=>(MONTHS.indexOf(String(a.month))-MONTHS.indexOf(String(b.month)))||a.name.localeCompare(b.name));
+    if(!rows.length)return;
+    const sec=document.createElement("section");sec.className="cat";
+    const d=rows.filter(r=>stateOf(r)==="done").length;
+    sec.innerHTML="<h2>"+esc(cat)+"<span>"+d+" of "+rows.length+" complete</span></h2>";
+    rows.forEach(it=>sec.appendChild(rowEl(it)));
+    host.appendChild(sec);
+  });
+}
+
+function rowEl(it){
+  const s=stateOf(it),e=expState(it);
+  const el=document.createElement("div");el.className="row "+s+(openId===it.id?" open":"");
+  const nameHtml=it.link?'<a href="'+esc(it.link)+'" target="_blank" rel="noopener">'+esc(it.name)+'</a>':esc(it.name);
+  const price=+it.price?money(+it.price)+" ea":"";
+  const line=+it.target*(+it.price||0);
+  const pill=s==="done"?'<span class="pill good">Complete</span>':s==="partial"?'<span class="pill warn">Partial</span>':'<span class="pill">To buy</span>';
+  const ep=e==="crit"?'<span class="pill crit">Expired '+fmtDate(it.expires)+'</span>':e==="warn"?'<span class="pill warn">Expires '+fmtDate(it.expires)+'</span>':it.expires?'<span>Exp. '+fmtDate(it.expires)+'</span>':'';
+  el.innerHTML='<div class="name">'+nameHtml+'</div>'
+   +'<div class="qty"><button aria-label="one less" data-a="dec">−</button><div class="n">'+(+it.have||0)+' <small>/ '+(+it.target||0)+'</small></div><button aria-label="one more" data-a="inc">+</button></div>'
+   +'<div class="meta">'+pill+'<span class="pill">Mo '+esc(it.month)+'</span>'+(price?'<span>'+price+'</span>':'')+(line?'<span>line '+money(line)+'</span>':'')+(it.shelf?'<span>'+esc(it.shelf)+' yr shelf</span>':'')+ep+'<button class="toggle" data-a="open">'+(openId===it.id?"close":"details")+'</button></div>'
+   +'<div class="more">'
+   +'<div><label>Have</label><input type="number" min="0" data-f="have" value="'+(+it.have||0)+'"></div>'
+   +'<div><label>Target</label><input type="number" min="0" data-f="target" value="'+(+it.target||0)+'"></div>'
+   +'<div><label>Price each</label><input type="number" min="0" step="0.01" data-f="price" value="'+esc(it.price??"")+'"></div>'
+   +'<div><label>Buy month</label><select data-f="month">'+MONTHS.map(m=>'<option'+(String(it.month)===m?" selected":"")+'>'+m+'</option>').join("")+'</select></div>'
+   +'<div><label>Purchased</label><input type="date" data-f="purchased" value="'+esc(it.purchased||"")+'"></div>'
+   +'<div><label>Expires</label><input type="date" data-f="expires" value="'+esc(it.expires||"")+'"></div>'
+   +'<div><label>Gallons each</label><input type="number" min="0" step="0.1" data-f="gallons" value="'+esc(it.gallons??"")+'"></div>'
+   +'<div><label>Calories each</label><input type="number" min="0" step="100" data-f="calories" value="'+esc(it.calories??"")+'"></div>'
+   +'<div><label>Shelf life (yrs)</label><input type="number" min="0" step="0.5" data-f="shelf" value="'+esc(it.shelf??"")+'"></div>'
+   +'<div class="full"><label>Name</label><input type="text" data-f="name" value="'+esc(it.name)+'"></div>'
+   +'<div class="full"><label>Link</label><input type="url" data-f="link" value="'+esc(it.link||"")+'"></div>'
+   +'<div class="full"><label>Notes</label><textarea rows="2" data-f="notes">'+esc(it.notes||"")+'</textarea></div>'
+   +'<div class="acts"><button class="btn" data-a="bought">Mark fully bought today</button><button class="btn danger" data-a="del">Remove item</button></div>'
+   +'</div>';
+  el.addEventListener("click",ev=>{const a=ev.target.closest("[data-a]");if(!a)return;const act=a.dataset.a;
+    if(act==="inc")save(it.id,{have:(+it.have||0)+1});
+    else if(act==="dec")save(it.id,{have:Math.max(0,(+it.have||0)-1)});
+    else if(act==="open"){openId=openId===it.id?null:it.id;render()}
+    else if(act==="bought"){const d={have:+it.target||0,purchased:today()};if(+it.shelf&&!it.expires){const x=new Date();const y=Math.floor(+it.shelf);x.setFullYear(x.getFullYear()+y);x.setMonth(x.getMonth()+Math.round((+it.shelf-y)*12));d.expires=x.toISOString().slice(0,10)}save(it.id,d);toast("Marked bought")}
+    else if(act==="del"){if(a.dataset.sure){delete items[it.id];openId=null;persist();render();toast("Removed")}else{a.dataset.sure="1";a.textContent="Tap again to remove"}}
+  });
+  el.querySelectorAll("[data-f]").forEach(inp=>inp.addEventListener("change",()=>{const f=inp.dataset.f;let v=inp.value;if(inp.type==="number")v=v===""?null:+v;const d={};d[f]=v;save(it.id,d)}));
+  return el;
+}
+function save(id,patch){items[id]=Object.assign({},items[id],patch);persist();render()}
+
+// add dialog
+$("addBtn").onclick=()=>{form.reset();$("fTarget").value=1;dlg.showModal()};
+$("dlgCancel").onclick=()=>dlg.close();
+form.addEventListener("submit",ev=>{ev.preventDefault();
+  const num=id=>$(id).value===""?null:+$(id).value;
+  const id="i"+Date.now().toString(36);
+  items[id]={id,name:$("fName").value.trim(),category:$("fCat").value,month:$("fMonth").value,target:num("fTarget")||0,have:0,price:num("fPrice"),gallons:num("fGal"),calories:num("fCal"),shelf:num("fShelf"),link:$("fLink").value.trim()||null,notes:$("fNotes").value.trim()||null,purchased:null,expires:null};
+  dlg.close();persist();render();toast("Added")});
+
+$("people").addEventListener("change",e=>{settings.people=Math.max(1,+e.target.value||4);persist();render()});
+
+// menu: export / import / reset
+const menu=$("menu");$("menuBtn").onclick=()=>menu.classList.toggle("open");
+document.addEventListener("click",e=>{if(!menu.contains(e.target))menu.classList.remove("open")});
+$("exportBtn").onclick=()=>{menu.classList.remove("open");const blob=new Blob([JSON.stringify({items,settings,exported:new Date().toISOString()},null,1)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="supply-tracker-"+today()+".json";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);toast("Backup downloaded")};
+$("importBtn").onclick=()=>{menu.classList.remove("open");$("importFile").click()};
+$("importFile").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.items)throw 0;items=d.items;settings=d.settings||settings;$("people").value=settings.people||4;persist();render();toast("Backup imported")}catch(x){toast("That file isn't a tracker backup")}};r.readAsText(f);e.target.value=""};
+let resetArmed=false;
+$("resetBtn").onclick=()=>{if(!resetArmed){resetArmed=true;$("resetBtn").textContent="Tap again to reset (erases progress)";setTimeout(()=>{resetArmed=false;$("resetBtn").textContent="Reset to the plan's list"},4000);return}menu.classList.remove("open");items=seedItems();settings={people:4};$("people").value=4;persist();render();toast("Reset to plan")};
+
+load();$("people").value=settings.people||4;render();
+})();
+</script>
+</body>
+</html>
