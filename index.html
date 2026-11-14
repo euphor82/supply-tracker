@@ -132,6 +132,10 @@ dialog h3{font-family:var(--display);font-size:22px;margin:0 0 10px}
 .exp-row .in{font-size:12px;color:var(--muted);white-space:nowrap}
 .exp-empty{color:var(--muted);padding:12px 0}
 #expBtn.hot{border-color:var(--crit);color:var(--crit);font-weight:600}
+.mic-status{font-size:13px;color:var(--muted);margin:8px 0 4px}
+.mic-status.live{color:var(--crit);font-weight:600}
+.mic-heard{font-family:var(--display);font-size:20px;min-height:1.4em;margin-bottom:10px;overflow-wrap:anywhere}
+#micBtn.live{border-color:var(--crit);color:var(--crit)}
 footer{margin-top:28px;font-size:12px;color:var(--muted)}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
 </style>
@@ -164,6 +168,7 @@ footer{margin-top:28px;font-size:12px;color:var(--muted)}
 
 <div class="toolbar">
   <button class="btn" id="expBtn">Expiring</button>
+  <button class="btn" id="micBtn" title="Say an item and its expiration date">&#127908; Speak</button>
   <select id="catFilter" aria-label="Category"><option value="">All categories</option></select>
   <select id="storeFilter" aria-label="Store"><option value="">All stores</option><option value="Sam's">Sam's Club</option><option value="Costco">Costco</option><option value="Either">Either warehouse</option><option value="none">Walmart / online</option></select>
   <select id="stateFilter" aria-label="Status"><option value="">All items</option><option value="todo">Still to buy</option><option value="partial">Partly bought</option><option value="done">Complete</option><option value="exp">Expiring / expired</option></select>
@@ -199,6 +204,18 @@ footer{margin-top:28px;font-size:12px;color:var(--muted)}
   <div class="exp-note" id="expNote"></div>
   <div id="expList"></div>
   <div class="form"><div class="acts"><button type="button" class="btn" id="expClose">Close</button></div></div>
+</dialog>
+<dialog id="micDlg">
+  <h3>Speak an expiration</h3>
+  <p class="pop-note" style="max-width:none">Say the item and when it expires, like <i>“Spam expires March 2029”</i>, <i>“peanut butter, two years”</i>, or <i>“bottled water, November 30th 2027, have 6”</i>.</p>
+  <div class="mic-status" id="micStatus">Tap the microphone to start.</div>
+  <div class="mic-heard" id="micHeard"></div>
+  <form class="form" id="micForm" method="dialog">
+    <div class="full"><label for="mItem">Item</label><select id="mItem"></select></div>
+    <div><label for="mDate">Expires</label><input id="mDate" type="date"></div>
+    <div><label for="mHave">Have (optional)</label><input id="mHave" type="number" min="0"></div>
+    <div class="acts"><button type="button" class="btn" id="micCancel">Close</button><button type="button" class="btn" id="micStart">&#127908; Listen</button><button type="submit" class="btn primary" id="micSave" disabled>Save</button></div>
+  </form>
 </dialog>
 <div class="toast" id="toast"></div>
 
@@ -425,6 +442,51 @@ function fmtShort(s){const d=new Date(s+"T00:00:00");return d.toLocaleDateString
 $("expBtn").onclick=()=>showExpiring(false);
 $("expClose").onclick=()=>$("expDlg").close();
 function expiringPopup(){const soon=expiringItems().filter(r=>r.days<=30);$("expBtn").classList.toggle("hot",soon.length>0);if(!soon.length)return;let last="";try{last=localStorage.getItem("supplyTracker.expAlert")||""}catch(e){}if(last===today())return;try{localStorage.setItem("supplyTracker.expAlert",today())}catch(e){}showExpiring(true)}
+
+// --- voice entry: "<item> expires <date>" ---
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+const NUMW={zero:0,one:1,a:1,an:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19,twenty:20,thirty:30,forty:40,fifty:50};
+const MON={january:0,jan:0,february:1,feb:1,march:2,mar:2,april:3,apr:3,may:4,june:5,jun:5,july:6,jul:6,august:7,aug:7,september:8,sept:8,sep:8,october:9,oct:9,november:10,nov:10,december:11,dec:11};
+function numOf(w){if(/^\d+$/.test(w))return +w;if(NUMW[w]!=null)return NUMW[w];const m=w.match(/^(twenty|thirty|forty|fifty)-?(one|two|three|four|five|six|seven|eight|nine)$/);if(m)return NUMW[m[1]]+NUMW[m[2]];return null}
+function iso(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate()).toISOString().slice(0,10)}
+function parseSpoken(text){
+  let t=text.toLowerCase().replace(/[,.]/g," ").replace(/(\d+)(st|nd|rd|th)\b/g,"$1").replace(/\s+/g," ").trim();
+  const out={item:"",date:null,have:null};
+  let m=t.match(/\b(?:i )?have (\d+|[a-z]+)\b/);if(m){const n=numOf(m[1]);if(n!=null){out.have=n;t=t.replace(m[0]," ")}}
+  const now=new Date();
+  // relative: in / for N unit(s)
+  m=t.match(/\b(?:in|for|good for|lasts?)?\s*(\d+|[a-z]+(?:-[a-z]+)?)\s*(day|week|month|year)s?\b/);
+  if(m&&numOf(m[1])!=null){const n=numOf(m[1]),d=new Date(now);({day:()=>d.setDate(d.getDate()+n),week:()=>d.setDate(d.getDate()+7*n),month:()=>d.setMonth(d.getMonth()+n),year:()=>d.setFullYear(d.getFullYear()+n)})[m[2]]();out.date=iso(d);t=t.replace(m[0]," ")}
+  // numeric m/d/y or m/y
+  if(!out.date){m=t.match(/\b(\d{1,2})[\/\- ](\d{1,2})[\/\- ](\d{2,4})\b/);if(m){let y=+m[3];if(y<100)y+=2000;out.date=iso(new Date(y,+m[1]-1,+m[2]));t=t.replace(m[0]," ")}}
+  if(!out.date){m=t.match(/\b(\d{1,2})\/(\d{4})\b/);if(m){out.date=iso(new Date(+m[2],+m[1]-1,1));t=t.replace(m[0]," ")}}
+  // month name [day] [year] | day month [year]
+  if(!out.date){m=t.match(/\b(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)\b(?:\s+(\d{1,2})\b)?(?:\s+(?:of\s+)?(\d{4}|20\s?\d{2}))?/);
+    if(m){const mo=MON[m[1]];let day=m[2]?+m[2]:1,y=m[3]?+m[3].replace(/\s/,""):null;if(y==null){y=now.getFullYear();if(new Date(y,mo,day)<now)y++}out.date=iso(new Date(y,mo,day));t=t.replace(m[0]," ")}}
+  if(!out.date){m=t.match(/\b(20\d{2})\b/);if(m){out.date=iso(new Date(+m[1],11,31));t=t.replace(m[0]," ")}}
+  if(!out.date){m=t.match(/\bnext (month|year)\b/);if(m){const d=new Date(now);m[1]==="month"?d.setMonth(d.getMonth()+1):d.setFullYear(d.getFullYear()+1);out.date=iso(d);t=t.replace(m[0]," ")}}
+  if(!out.date){m=t.match(/\bend of (?:the )?(month|year)\b/);if(m){out.date=m[1]==="month"?iso(new Date(now.getFullYear(),now.getMonth()+1,0)):iso(new Date(now.getFullYear(),11,31));t=t.replace(m[0]," ")}}
+  out.item=t.replace(/\b(expires?|expiring|expiration|expire date|good until|good till|best by|use by|until|till|through|on|is|are|the|my|our|it|in|of|and|date|dates)\b/g," ").replace(/\s+/g," ").trim();
+  return out;
+}
+const STOP=new Set(["or","and","the","a","of","x","oz","lb","pack","packs","case","cases","can","cans","count","any","other","similar","regular","large","box","boxes","jar","jug","set","each","kit","pail","gal","gallon","gallons"]);
+function toks(s){return s.toLowerCase().replace(/[^a-z0-9 ]/g," ").split(" ").filter(w=>w.length>1&&!STOP.has(w)).map(w=>w.replace(/(ies)$/,"y").replace(/s$/,""))}
+function matchItems(phrase){const q=toks(phrase);if(!q.length)return[];return Object.values(items).map(it=>{const n=toks(it.name);let sc=0;q.forEach(w=>{if(n.includes(w))sc+=2;else if(n.some(x=>x.startsWith(w)||w.startsWith(x)))sc+=1});return{it,sc:sc/(q.length*2)-n.length*0.005}}).filter(r=>r.sc>0.2).sort((a,b)=>b.sc-a.sc).slice(0,8)}
+const micDlg=$("micDlg");let rec=null;
+function fillItemSelect(matches){const sel=$("mItem");sel.innerHTML="";const ids=new Set();matches.forEach(r=>{ids.add(r.it.id);const o=document.createElement("option");o.value=r.it.id;o.textContent=r.it.name;sel.appendChild(o)});if(matches.length){const d=document.createElement("option");d.disabled=true;d.textContent="──────";sel.appendChild(d)}Object.values(items).sort((a,b)=>a.name.localeCompare(b.name)).forEach(it=>{if(ids.has(it.id))return;const o=document.createElement("option");o.value=it.id;o.textContent=it.name;sel.appendChild(o)})}
+function applySpoken(text){$("micHeard").textContent="“"+text+"”";const p=parseSpoken(text);const m=matchItems(p.item);fillItemSelect(m);if(p.date)$("mDate").value=p.date;if(p.have!=null)$("mHave").value=p.have;
+  const st=$("micStatus");st.className="mic-status";
+  if(!m.length)st.textContent="Couldn’t match “"+p.item+"” to an item. Pick it from the list.";else if(!p.date)st.textContent="Heard “"+m[0].it.name+"” but no date. Set it below or try again.";else st.textContent="Matched “"+m[0].it.name+"” → expires "+fmtDate(p.date)+". Check and save.";$("micSave").disabled=false}
+function startListening(){if(!SR){$("micStatus").textContent="Voice input isn’t available in this browser. Chrome or Safari work; you can still fill in the fields below.";fillItemSelect([]);$("micSave").disabled=false;return}
+  if(rec){try{rec.stop()}catch(e){}}rec=new SR();rec.lang="en-US";rec.interimResults=true;rec.maxAlternatives=1;const st=$("micStatus");st.textContent="Listening…";st.className="mic-status live";$("micBtn").classList.add("live");
+  rec.onresult=e=>{let t="";for(const r of e.results)t+=r[0].transcript;$("micHeard").textContent="“"+t+"”";if(e.results[e.results.length-1].isFinal)applySpoken(t)};
+  rec.onerror=e=>{st.className="mic-status";st.textContent=e.error==="not-allowed"?"Microphone access was blocked. Allow it in the browser’s site settings and try again.":"Didn’t catch that ("+e.error+"). Tap Listen to try again.";fillItemSelect([]);$("micSave").disabled=false};
+  rec.onend=()=>{$("micBtn").classList.remove("live");if(st.classList.contains("live")){st.className="mic-status";st.textContent="Tap Listen to try again."}};
+  try{rec.start()}catch(e){st.textContent="Couldn’t start the microphone."}}
+$("micBtn").onclick=()=>{$("micHeard").textContent="";$("mDate").value="";$("mHave").value="";$("micSave").disabled=true;$("micStatus").className="mic-status";$("micStatus").textContent="Tap Listen, then speak.";fillItemSelect([]);micDlg.showModal();startListening()};
+$("micStart").onclick=startListening;
+$("micCancel").onclick=()=>{if(rec){try{rec.stop()}catch(e){}}micDlg.close()};
+$("micForm").addEventListener("submit",ev=>{ev.preventDefault();const id=$("mItem").value,d=$("mDate").value;if(!id||!items[id]){toast("Pick an item");return}if(!d){toast("Set a date");return}const patch={expires:d};const h=$("mHave").value;if(h!=="")patch.have=+h;if(!items[id].purchased)patch.purchased=today();save(id,patch);if(rec){try{rec.stop()}catch(e){}}micDlg.close();toast(items[id].name+" → "+fmtDate(d));expiringPopup()});
 
 $("people").addEventListener("change",e=>{settings.people=Math.max(1,+e.target.value||4);persist();render()});
 
