@@ -370,11 +370,18 @@ const SEED2=[
  ["canopener","Manual can opener (easy-grip)",4,"1",2,4,0,0,0,"","Either","MUST"],
  ["paper","Paper plates, cups, wet wipes (1 pack each)",5,"2",1,30,0,0,0,"","Either","B"]
 ];
-const SEED_VERSION=2;
+const SEED3=[
+ ["generator","Portable generator (dual-fuel inverter, ~4,000 W)",4,"",1,650,0,0,0,"","","B"],
+ ["gascan","Gasoline, 5 gal can (filled)",4,"",4,25,0,0,1,"","","B"],
+ ["stabil","Fuel stabilizer (STA-BIL or similar), 32 oz",4,"",1,12,0,0,2,"","","B"],
+ ["genoil","Generator oil + spare spark plug",4,"",1,20,0,0,0,"","","C"],
+ ["gencord","Heavy-duty extension cords, 12-gauge, 50 ft",4,"",2,45,0,0,0,"","","B"]
+];
+const SEED_VERSION=3;
 function seedRow(r){return {id:r[0],name:r[1],category:CATS[r[2]],month:r[3],target:r[4],have:0,price:r[5],gallons:r[6]||null,calories:r[7]||null,shelf:r[8]||null,link:r[9]||null,store:r[10]||null,grade:r[11]||null,notes:null,purchased:null,expires:null}}
-function seedItems(){const o={};SEED.concat(SEED2).forEach(r=>{o[r[0]]=seedRow(r)});return o}
+function seedItems(){const o={};SEED.concat(SEED2,SEED3).forEach(r=>{o[r[0]]=seedRow(r)});return o}
 // Merge newly added seed items into an existing saved list without touching progress; removed items stay removed.
-function migrate(){const v=+settings.seedVersion||1;if(v>=SEED_VERSION)return;const removed=settings.removed||[];let n=0;SEED.concat(SEED2).forEach(r=>{if(!items[r[0]]&&!removed.includes(r[0])){items[r[0]]=seedRow(r);n++}else if(items[r[0]]){const it=items[r[0]];if(r[10]&&!it.store)it.store=r[10];if(r[11]&&!it.grade)it.grade=r[11]}});if(items.bottled&&items.bottled.name==="Bottled water, 40-pack case"){items.bottled.name="Member's Mark bottled water, 40 × 16.9 oz case";if(items.bottled.target===4)items.bottled.target=6}settings.seedVersion=SEED_VERSION;persist();if(n)toast(n+" warehouse items added from the Sam\u2019s/Costco list")}
+function migrate(){const v=+settings.seedVersion||1;if(v>=SEED_VERSION)return;const removed=settings.removed||[];let n=0;SEED.concat(SEED2,SEED3).forEach(r=>{if(!items[r[0]]&&!removed.includes(r[0])){items[r[0]]=seedRow(r);n++}else if(items[r[0]]){const it=items[r[0]];if(r[10]&&!it.store)it.store=r[10];if(r[11]&&!it.grade)it.grade=r[11]}});if(items.bottled&&items.bottled.name==="Bottled water, 40-pack case"){items.bottled.name="Member's Mark bottled water, 40 × 16.9 oz case";if(items.bottled.target===4)items.bottled.target=6}settings.seedVersion=SEED_VERSION;persist();if(n)toast(n+" new item"+(n===1?"":"s")+" added to the list")}
 
 const $=id=>document.getElementById(id);
 const KEY="supplyTracker.v1";
