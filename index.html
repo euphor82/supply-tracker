@@ -450,6 +450,7 @@ function rowEl(it){
    +'<div><label>Expires</label><input type="date" data-f="expires" value="'+esc(it.expires||"")+'"></div>'
    +'<div><label>Gallons each</label><input type="number" min="0" step="0.1" data-f="gallons" value="'+esc(it.gallons??"")+'"></div>'
    +'<div><label>Calories each</label><input type="number" min="0" step="100" data-f="calories" value="'+esc(it.calories??"")+'"></div>'
+   +'<div><label>Category</label><select data-f="category">'+CATS.map(c=>'<option'+(it.category===c?" selected":"")+'>'+esc(c)+'</option>').join("")+'</select></div>'
    +'<div><label>Store</label><select data-f="store"><option value="">Walmart / online</option>'+STORES.slice(0,3).map(st=>'<option'+(it.store===st?" selected":"")+'>'+st+'</option>').join("")+'</select></div>'
    +'<div><label>Grade</label><input type="text" data-f="grade" value="'+esc(it.grade||"")+'" placeholder="A (7)"></div>'
    +'<div><label>Shelf life (yrs)</label><input type="number" min="0" step="0.5" data-f="shelf" value="'+esc(it.shelf??"")+'"></div>'
