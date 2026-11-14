@@ -277,7 +277,8 @@ footer{margin-top:28px;font-size:12px;color:var(--muted)}
 
 <script>
 (function(){
-const CATS=["Water","Food: grab-and-go","Food: meals","Food: staples","Cooking, light & power","First aid & sanitation","Comms, tools & documents"];
+const CATS=["Water","Food: grab-and-go","Food: meals","Food: staples","Cooking, light & heat","Power","First aid & sanitation","Comms, tools & documents"];
+const OLD_CAT="Cooking, light & power";const POWER_IDS=["jackery","solar","batt","bank","carchg","generator","gascan","stabil","genoil","gencord"];
 const MONTHS=["1","2","3","4","5","6","7","8","9","10+"];
 // Seed: the Family Emergency Supply Plan, Nov 1 2026. [id, name, category index, month, target, price each, gallons each, calories each, shelf years, link]
 const W="https://www.walmart.com/ip/";
@@ -310,38 +311,38 @@ const SEED=[
  ["tank","20 lb propane tank, filled",4,"2",2,45,0,0,0,""],
  ["hose","Propane adapter hose (tank to stove)",4,"2",1,20,0,0,0,""],
  ["cyl","Camp stove fuel, 1 lb propane canisters (4–6)",4,"2",1,25,0,0,0,"","Either","B"],
- ["jackery","Jackery Explorer 1000 v2 power station",4,"10+",1,450,0,0,0,"https://slickdeals.net/f/19448718-jackery-explorer-1000-v2-portable-power-station-1070wh-lifepo4-battery-428-99"],
- ["solar","100 W solar panel",4,"10+",1,175,0,0,0,""],
+ ["jackery","Jackery Explorer 1000 v2 power station",5,"10+",1,450,0,0,0,"https://slickdeals.net/f/19448718-jackery-explorer-1000-v2-portable-power-station-1070wh-lifepo4-battery-428-99"],
+ ["solar","100 W solar panel",5,"10+",1,175,0,0,0,""],
  ["lantern","LED lantern",4,"2",3,15,0,0,0,""],
  ["headlamp","Headlamp",4,"2",4,12,0,0,0,""],
- ["batt","Lithium AA/AAA batteries, pack",4,"9",2,25,0,0,20,""],
+ ["batt","Lithium AA/AAA batteries, pack",5,"9",2,25,0,0,20,""],
  ["heater","Mr. Heater Buddy indoor-safe heater",4,"8",1,100,0,0,0,""],
  ["co","Carbon monoxide detector (battery)",4,"8",1,25,0,0,7,""],
  ["blanket","Wool blanket or 20°F sleeping bag",4,"8",4,30,0,0,0,""],
  ["fire","Lighters, waterproof matches, ferro rod",4,"2",1,15,0,0,0,""],
  ["pots","Cast iron skillet + large pot",4,"2",1,40,0,0,0,""],
- ["myfak","My Medic MyFAK first aid kit",5,"7",1,150,0,0,5,"https://www.beprepared.com/collections/all/products/my-medic-myfak-first-aid-kit"],
- ["otc","OTC meds (pain, fever, allergy, Imodium, electrolytes)",5,"3",1,50,0,0,1,""],
- ["rx","30-day extra supply of prescriptions",5,"3",1,0,0,0,1,""],
- ["loo","Reliance Luggable Loo bucket toilet",5,"3",1,27.99,0,0,0,W+"12863573053"],
- ["doodie","Double Doodie toilet bags, 6-pack",5,"3",3,18,0,0,0,""],
- ["tp","Toilet paper, large pack",5,"3",2,20,0,0,0,""],
- ["trash","Contractor trash bags, box",5,"3",1,20,0,0,0,""],
- ["wipes","Hand sanitizer, baby wipes, bar soap",5,"3",1,30,0,0,2,""],
- ["fem","Feminine hygiene, 3-month supply",5,"3",1,30,0,0,0,""],
- ["ppe","Nitrile gloves + N95 masks",5,"7",1,30,0,0,5,""],
- ["buckets","5-gallon buckets with lids",5,"3",4,5,0,0,0,""],
- ["shock","Pool shock (calcium hypochlorite), 1 lb",5,"9",1,8,0,0,0,""],
- ["radio","Midland ER310 crank/solar weather radio",6,"7",1,70,0,0,0,"https://www.sportsmans.com/camping-gear-supplies/electronics/weather-radios-weather-stations/midland-er310-eready-emergency-crank-weather-radio/p/1519099"],
- ["walkie","Midland FRS/GMRS walkie-talkies, 3-pack",6,"7",1,75,0,0,0,""],
- ["bank","USB battery bank, 20,000 mAh",6,"9",2,30,0,0,0,""],
- ["carchg","Car phone chargers",6,"9",2,10,0,0,0,""],
- ["tool","Multi-tool + fixed-blade knife",6,"9",1,60,0,0,0,""],
- ["tape","Duct tape, paracord, 2 tarps, zip ties",6,"9",1,50,0,0,0,""],
- ["ext","Fire extinguisher, ABC 5 lb",6,"8",1,35,0,0,12,""],
- ["wrench","Gas and water shutoff wrench",6,"9",1,15,0,0,0,""],
- ["cash","Cash in small bills ($100 units)",6,"10+",4,100,0,0,0,""],
- ["docs","Waterproof document pouch + copies + USB drive",6,"7",1,15,0,0,0,""]
+ ["myfak","My Medic MyFAK first aid kit",6,"7",1,150,0,0,5,"https://www.beprepared.com/collections/all/products/my-medic-myfak-first-aid-kit"],
+ ["otc","OTC meds (pain, fever, allergy, Imodium, electrolytes)",6,"3",1,50,0,0,1,""],
+ ["rx","30-day extra supply of prescriptions",6,"3",1,0,0,0,1,""],
+ ["loo","Reliance Luggable Loo bucket toilet",6,"3",1,27.99,0,0,0,W+"12863573053"],
+ ["doodie","Double Doodie toilet bags, 6-pack",6,"3",3,18,0,0,0,""],
+ ["tp","Toilet paper, large pack",6,"3",2,20,0,0,0,""],
+ ["trash","Contractor trash bags, box",6,"3",1,20,0,0,0,""],
+ ["wipes","Hand sanitizer, baby wipes, bar soap",6,"3",1,30,0,0,2,""],
+ ["fem","Feminine hygiene, 3-month supply",6,"3",1,30,0,0,0,""],
+ ["ppe","Nitrile gloves + N95 masks",6,"7",1,30,0,0,5,""],
+ ["buckets","5-gallon buckets with lids",6,"3",4,5,0,0,0,""],
+ ["shock","Pool shock (calcium hypochlorite), 1 lb",6,"9",1,8,0,0,0,""],
+ ["radio","Midland ER310 crank/solar weather radio",7,"7",1,70,0,0,0,"https://www.sportsmans.com/camping-gear-supplies/electronics/weather-radios-weather-stations/midland-er310-eready-emergency-crank-weather-radio/p/1519099"],
+ ["walkie","Midland FRS/GMRS walkie-talkies, 3-pack",7,"7",1,75,0,0,0,""],
+ ["bank","USB battery bank, 20,000 mAh",5,"9",2,30,0,0,0,""],
+ ["carchg","Car phone chargers",5,"9",2,10,0,0,0,""],
+ ["tool","Multi-tool + fixed-blade knife",7,"9",1,60,0,0,0,""],
+ ["tape","Duct tape, paracord, 2 tarps, zip ties",7,"9",1,50,0,0,0,""],
+ ["ext","Fire extinguisher, ABC 5 lb",7,"8",1,35,0,0,12,""],
+ ["wrench","Gas and water shutoff wrench",7,"9",1,15,0,0,0,""],
+ ["cash","Cash in small bills ($100 units)",7,"10+",4,100,0,0,0,""],
+ ["docs","Waterproof document pouch + copies + USB drive",7,"7",1,15,0,0,0,""]
 ];
 // Pantry Insurance List v1.2 (Nov 13 2026): Sam's Club + Costco 2-week pantry. Same fields, plus store and grade. Calories are estimates from typical labels.
 const SEED2=[
@@ -368,20 +369,20 @@ const SEED2=[
  ["fruit","Fruit cups or applesauce pouches, 24 count",1,"3",2,12.99,0,1680,1.2,"","Costco","C (4)"],
  ["pasta","Kirkland pasta, 8 × 1 lb",3,"2",1,10,0,12800,1.5,"","Costco","B (6)"],
  ["canopener","Manual can opener (easy-grip)",4,"1",2,4,0,0,0,"","Either","MUST"],
- ["paper","Paper plates, cups, wet wipes (1 pack each)",5,"2",1,30,0,0,0,"","Either","B"]
+ ["paper","Paper plates, cups, wet wipes (1 pack each)",6,"2",1,30,0,0,0,"","Either","B"]
 ];
 const SEED3=[
- ["generator","Portable generator (dual-fuel inverter, ~4,000 W)",4,"",1,650,0,0,0,"","","B"],
- ["gascan","Gasoline, 5 gal can (filled)",4,"",4,25,0,0,1,"","","B"],
- ["stabil","Fuel stabilizer (STA-BIL or similar), 32 oz",4,"",1,12,0,0,2,"","","B"],
- ["genoil","Generator oil + spare spark plug",4,"",1,20,0,0,0,"","","C"],
- ["gencord","Heavy-duty extension cords, 12-gauge, 50 ft",4,"",2,45,0,0,0,"","","B"]
+ ["generator","Portable generator (dual-fuel inverter, ~4,000 W)",5,"",1,650,0,0,0,"","","B"],
+ ["gascan","Gasoline, 5 gal can (filled)",5,"",4,25,0,0,1,"","","B"],
+ ["stabil","Fuel stabilizer (STA-BIL or similar), 32 oz",5,"",1,12,0,0,2,"","","B"],
+ ["genoil","Generator oil + spare spark plug",5,"",1,20,0,0,0,"","","C"],
+ ["gencord","Heavy-duty extension cords, 12-gauge, 50 ft",5,"",2,45,0,0,0,"","","B"]
 ];
-const SEED_VERSION=3;
+const SEED_VERSION=4;
 function seedRow(r){return {id:r[0],name:r[1],category:CATS[r[2]],month:r[3],target:r[4],have:0,price:r[5],gallons:r[6]||null,calories:r[7]||null,shelf:r[8]||null,link:r[9]||null,store:r[10]||null,grade:r[11]||null,notes:null,purchased:null,expires:null}}
 function seedItems(){const o={};SEED.concat(SEED2,SEED3).forEach(r=>{o[r[0]]=seedRow(r)});return o}
 // Merge newly added seed items into an existing saved list without touching progress; removed items stay removed.
-function migrate(){const v=+settings.seedVersion||1;if(v>=SEED_VERSION)return;const removed=settings.removed||[];let n=0;SEED.concat(SEED2,SEED3).forEach(r=>{if(!items[r[0]]&&!removed.includes(r[0])){items[r[0]]=seedRow(r);n++}else if(items[r[0]]){const it=items[r[0]];if(r[10]&&!it.store)it.store=r[10];if(r[11]&&!it.grade)it.grade=r[11]}});if(items.bottled&&items.bottled.name==="Bottled water, 40-pack case"){items.bottled.name="Member's Mark bottled water, 40 × 16.9 oz case";if(items.bottled.target===4)items.bottled.target=6}settings.seedVersion=SEED_VERSION;persist();if(n)toast(n+" new item"+(n===1?"":"s")+" added to the list")}
+function migrate(){const v=+settings.seedVersion||1;if(v>=SEED_VERSION)return;const removed=settings.removed||[];let n=0;Object.values(items).forEach(it=>{if(it.category===OLD_CAT)it.category=POWER_IDS.includes(it.id)?"Power":"Cooking, light & heat"});SEED.concat(SEED2,SEED3).forEach(r=>{if(!items[r[0]]&&!removed.includes(r[0])){items[r[0]]=seedRow(r);n++}else if(items[r[0]]){const it=items[r[0]];if(r[10]&&!it.store)it.store=r[10];if(r[11]&&!it.grade)it.grade=r[11]}});if(items.bottled&&items.bottled.name==="Bottled water, 40-pack case"){items.bottled.name="Member's Mark bottled water, 40 × 16.9 oz case";if(items.bottled.target===4)items.bottled.target=6}settings.seedVersion=SEED_VERSION;persist();if(n)toast(n+" new item"+(n===1?"":"s")+" added to the list")}
 
 const $=id=>document.getElementById(id);
 const KEY="supplyTracker.v1";
