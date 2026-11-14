@@ -90,6 +90,8 @@ section.cat h2 span{font-family:var(--body);font-size:12px;font-weight:500;color
 .pill.good{background:var(--good-bg);color:var(--good)}
 .pill.warn{background:var(--warn-bg);color:var(--warn)}
 .pill.crit{background:var(--crit-bg);color:var(--crit)}
+.pill.store{background:var(--line);color:var(--fg)}
+.pill.grade{background:transparent;border:1px solid var(--line);color:var(--muted)}
 .qty{grid-row:1/3;grid-column:2;display:flex;align-items:center;gap:4px}
 .qty button{width:30px;height:30px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:inherit;font-size:16px;cursor:pointer}
 .qty .n{font-family:var(--display);font-size:22px;font-weight:700;min-width:3.6em;text-align:center;font-variant-numeric:tabular-nums}
@@ -138,6 +140,7 @@ footer{margin-top:28px;font-size:12px;color:var(--muted)}
 <div class="toolbar">
   <div class="chips" id="monthChips"></div>
   <select id="catFilter" aria-label="Category"><option value="">All categories</option></select>
+  <select id="storeFilter" aria-label="Store"><option value="">All stores</option><option value="Sam's">Sam's Club</option><option value="Costco">Costco</option><option value="Either">Either warehouse</option><option value="none">Walmart / online</option></select>
   <select id="stateFilter" aria-label="Status"><option value="">All items</option><option value="todo">Still to buy</option><option value="partial">Partly bought</option><option value="done">Complete</option><option value="exp">Expiring / expired</option></select>
   <span class="spacer"></span>
   <button class="btn primary" id="addBtn">+ Add item</button>
@@ -152,7 +155,7 @@ footer{margin-top:28px;font-size:12px;color:var(--muted)}
 
 <div id="list"></div>
 
-<footer>Data lives in this browser only. Export a backup now and then, and import it on your other devices. Prices are from the Nov 1, 2026 plan; edit any item to update them.</footer>
+<footer>Data lives in this browser only. Export a backup now and then, and import it on your other devices. Prices are from the Nov 1, 2026 plan and the Nov 13 Sam’s/Costco pantry list; edit any item to update them.</footer>
 </div>
 
 <dialog id="dlg">
@@ -165,6 +168,8 @@ footer{margin-top:28px;font-size:12px;color:var(--muted)}
     <div><label for="fPrice">Price each ($)</label><input id="fPrice" type="number" min="0" step="0.01"></div>
     <div><label for="fGal">Gallons each (water)</label><input id="fGal" type="number" min="0" step="0.1"></div>
     <div><label for="fCal">Calories each (food)</label><input id="fCal" type="number" min="0" step="100"></div>
+    <div><label for="fStore">Store</label><select id="fStore"><option value="">Walmart / online</option><option>Sam's</option><option>Costco</option><option>Either</option></select></div>
+    <div><label for="fGrade">Grade</label><input id="fGrade" placeholder="A (7)"></div>
     <div><label for="fShelf">Shelf life (years)</label><input id="fShelf" type="number" min="0" step="0.5"></div>
     <div><label for="fLink">Link</label><input id="fLink" type="url" placeholder="https://"></div>
     <div class="full"><label for="fNotes">Notes</label><input id="fNotes"></div>
@@ -183,8 +188,9 @@ const SEED=[
  ["aqua","Reliance Aqua-Tainer 7 gal jug",0,"1",6,19.88,7,0,0,W+"872426"],
  ["sawyer","Sawyer Squeeze water filter",0,"1",1,45.99,0,0,0,W+"21811663"],
  ["mini","Sawyer Mini filter (car kit)",0,"9",1,16.99,0,0,0,W+"46446042"],
- ["bottled","Bottled water, 40-pack case",0,"1",4,5,5.3,0,1.5,""],
- ["bleach","Unscented bleach, 1 gal",0,"1",1,5,0,0,1,""],
+ ["bottled","Member's Mark bottled water, 40 × 16.9 oz case",0,"1",6,5.5,5.3,0,5,"","Sam's","MUST"],
+ ["bottledc","Kirkland bottled water, 40 × 16.9 oz case",0,"1",5,5.5,5.3,0,5,"","Costco","MUST"],
+ ["bleach","Unscented household bleach, 1 jug",0,"1",1,6,0,0,1,"","Either","MUST"],
  ["carrier","Collapsible 5 gal water carrier",0,"9",1,15,0,0,0,""],
  ["datrex","Datrex 3,600-cal ration bar",1,"1",6,7.5,0,3600,5,"https://www.sosproducts.com/Datrex-Food-Bar-3600-Calorie-Each-p/35025.htm"],
  ["af48","Augason Farms 48-Hour 4-Person kit",1,"1",1,27.38,0,8000,25,W+"152516239"],
@@ -206,7 +212,7 @@ const SEED=[
  ["stove","Coleman Classic 2-burner propane stove",4,"2",1,85,0,0,0,"https://www.campmor.com/products/coleman-classic-propane-gas-camping-stove-2-burner"],
  ["tank","20 lb propane tank, filled",4,"2",2,45,0,0,0,""],
  ["hose","Propane adapter hose (tank to stove)",4,"2",1,20,0,0,0,""],
- ["cyl","1 lb propane cylinders, 4-pack",4,"2",1,20,0,0,0,""],
+ ["cyl","Camp stove fuel, 1 lb propane canisters (4–6)",4,"2",1,25,0,0,0,"","Either","B"],
  ["jackery","Jackery Explorer 1000 v2 power station",4,"10+",1,450,0,0,0,"https://slickdeals.net/f/19448718-jackery-explorer-1000-v2-portable-power-station-1070wh-lifepo4-battery-428-99"],
  ["solar","100 W solar panel",4,"10+",1,175,0,0,0,""],
  ["lantern","LED lantern",4,"2",3,15,0,0,0,""],
@@ -240,16 +246,48 @@ const SEED=[
  ["cash","Cash in small bills ($100 units)",6,"10+",4,100,0,0,0,""],
  ["docs","Waterproof document pouch + copies + USB drive",6,"7",1,15,0,0,0,""]
 ];
-function seedItems(){const o={};SEED.forEach(r=>{o[r[0]]={id:r[0],name:r[1],category:CATS[r[2]],month:r[3],target:r[4],have:0,price:r[5],gallons:r[6]||null,calories:r[7]||null,shelf:r[8]||null,link:r[9]||null,notes:null,purchased:null,expires:null}});return o}
+// Pantry Insurance List v1.2 (Nov 13 2026): Sam's Club + Costco 2-week pantry. Same fields, plus store and grade. Calories are estimates from typical labels.
+const SEED2=[
+ ["gatorade","Gatorade regular, 28-bottle variety pack",0,"2",2,15.78,4.4,3900,0.8,"","Sam's","B"],
+ ["chicken","Member's Mark chunk chicken breast, 6 × 12.5 oz",1,"1",3,11.98,0,2100,3,"","Sam's","A (7)"],
+ ["chili","Canned chili (Hormel or similar), 6 × 15 oz",1,"1",3,10.5,0,2640,3,"","Sam's","A (7)"],
+ ["boyardee","Chef Boyardee ravioli or spaghetti & meatballs, 8 × 15 oz",1,"2",2,12,0,3360,1.5,"","Sam's","B (5)"],
+ ["tuna","Member's Mark tuna, 8 cans",1,"2",1,13.49,0,1200,3,"","Sam's","B (6)"],
+ ["corn","Del Monte corn, 8 cans",1,"2",2,8.42,0,1920,3,"","Sam's","B (6)"],
+ ["greenbeans","Canned green beans or mixed vegetables, 8 cans",1,"2",1,8,0,800,3,"","Sam's","B (5)"],
+ ["mmrice","Member's Mark long-grain white rice, 25 lb bag",3,"1",1,11.48,0,40000,2,"","Sam's","A (7)"],
+ ["rolledoats","Old-fashioned rolled oats, ~10 lb",3,"1",1,9.98,0,17000,1.5,"","Sam's","A (7)"],
+ ["pinto","Member's Mark dry pinto beans, 12 lb bag",3,"2",1,7.98,0,18600,1,"","Sam's","B (6)"],
+ ["tomsauce","Canned tomato sauce, 12 × 15 oz",3,"3",1,9.98,0,1560,1.2,"","Sam's","C (4)"],
+ ["liquidiv","Liquid I.V. or other electrolyte powder, big box",0,"2",1,25,0,1300,2,"","Costco","B"],
+ ["coffee","Instant coffee + tea bags (1 jar + 1 box)",0,"2",1,18,0,0,2,"","Costco","B"],
+ ["milk","Shelf-stable milk, 8 oz boxes, case of 18–24",0,"3",2,22,0,3600,0.75,"","Costco","C"],
+ ["pbtwin","Peanut butter (Jif or Skippy), 2 × 48 oz twin pack",1,"1",2,12.99,0,16000,1.5,"","Costco","A (8)"],
+ ["spam","Spam 25% less sodium, 8 × 12 oz",1,"1",1,28.93,0,8640,3,"","Costco","A (7)"],
+ ["kblackbeans","Kirkland black beans (or any canned beans), 8 × 15 oz",1,"1",2,10,0,2800,3,"","Costco","A (8)"],
+ ["honey","Kirkland honey, 3 lb",1,"1",1,12.99,0,4100,99,"","Costco","A (9)"],
+ ["granola","Granola bars (Nature Valley or Kirkland), box",1,"1",2,14,0,4560,1,"","Costco","A (7)"],
+ ["protein","Kirkland protein bars, 20 count",1,"2",1,24.99,0,4000,1,"","Costco","B (6)"],
+ ["fruit","Fruit cups or applesauce pouches, 24 count",1,"3",2,12.99,0,1680,1.2,"","Costco","C (4)"],
+ ["pasta","Kirkland pasta, 8 × 1 lb",3,"2",1,10,0,12800,1.5,"","Costco","B (6)"],
+ ["canopener","Manual can opener (easy-grip)",4,"1",2,4,0,0,0,"","Either","MUST"],
+ ["paper","Paper plates, cups, wet wipes (1 pack each)",5,"2",1,30,0,0,0,"","Either","B"]
+];
+const SEED_VERSION=2;
+function seedRow(r){return {id:r[0],name:r[1],category:CATS[r[2]],month:r[3],target:r[4],have:0,price:r[5],gallons:r[6]||null,calories:r[7]||null,shelf:r[8]||null,link:r[9]||null,store:r[10]||null,grade:r[11]||null,notes:null,purchased:null,expires:null}}
+function seedItems(){const o={};SEED.concat(SEED2).forEach(r=>{o[r[0]]=seedRow(r)});return o}
+// Merge newly added seed items into an existing saved list without touching progress; removed items stay removed.
+function migrate(){const v=+settings.seedVersion||1;if(v>=SEED_VERSION)return;const removed=settings.removed||[];let n=0;SEED.concat(SEED2).forEach(r=>{if(!items[r[0]]&&!removed.includes(r[0])){items[r[0]]=seedRow(r);n++}else if(items[r[0]]){const it=items[r[0]];if(r[10]&&!it.store)it.store=r[10];if(r[11]&&!it.grade)it.grade=r[11]}});if(items.bottled&&items.bottled.name==="Bottled water, 40-pack case"){items.bottled.name="Member's Mark bottled water, 40 × 16.9 oz case";if(items.bottled.target===4)items.bottled.target=6}settings.seedVersion=SEED_VERSION;persist();if(n)toast(n+" warehouse items added from the Sam\u2019s/Costco list")}
 
 const $=id=>document.getElementById(id);
 const KEY="supplyTracker.v1";
-let items={}, settings={people:4}, filterMonth="", filterCat="", filterState="", openId=null;
+let items={}, settings={people:4}, filterMonth="", filterCat="", filterState="", filterStore="", openId=null;
+const STORES=["Sam's","Costco","Either","Walmart / online"];
 const today=()=>new Date().toISOString().slice(0,10);
 const money=n=>"$"+Math.round(n).toLocaleString();
 const dlg=$("dlg"), form=$("form");
 
-function load(){try{const s=JSON.parse(localStorage.getItem(KEY)||"null");if(s&&s.items){items=s.items;settings=s.settings||settings;return}}catch(e){}items=seedItems()}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY)||"null");if(s&&s.items){items=s.items;settings=s.settings||settings;return}}catch(e){}items=seedItems();settings.seedVersion=SEED_VERSION}
 function persist(){try{localStorage.setItem(KEY,JSON.stringify({items,settings,saved:new Date().toISOString()}));$("status").textContent="Saved on this device"}catch(e){$("status").textContent="Couldn't save (storage blocked)"}}
 
 // chips / selects
@@ -259,8 +297,9 @@ CATS.forEach(c=>{const o=document.createElement("option");o.value=c;o.textConten
 MONTHS.forEach(m=>{const o=document.createElement("option");o.value=m;o.textContent="Month "+m;$("fMonth").appendChild(o)});
 $("catFilter").onchange=e=>{filterCat=e.target.value;render()};
 $("stateFilter").onchange=e=>{filterState=e.target.value;render()};
-try{const s=JSON.parse(localStorage.getItem("supplyTracker.filters")||"{}");filterMonth=s.m||"";filterCat=s.c||"";filterState=s.s||"";$("catFilter").value=filterCat;$("stateFilter").value=filterState}catch(e){}
-function saveFilters(){try{localStorage.setItem("supplyTracker.filters",JSON.stringify({m:filterMonth,c:filterCat,s:filterState}))}catch(e){}}
+$("storeFilter").onchange=e=>{filterStore=e.target.value;render()};
+try{const s=JSON.parse(localStorage.getItem("supplyTracker.filters")||"{}");filterMonth=s.m||"";filterCat=s.c||"";filterState=s.s||"";filterStore=s.st||"";$("catFilter").value=filterCat;$("stateFilter").value=filterState;$("storeFilter").value=filterStore}catch(e){}
+function saveFilters(){try{localStorage.setItem("supplyTracker.filters",JSON.stringify({m:filterMonth,c:filterCat,s:filterState,st:filterStore}))}catch(e){}}
 
 function toast(t){const el=$("toast");el.textContent=t;el.classList.add("show");clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove("show"),1800)}
 function stateOf(it){const have=+it.have||0,target=+it.target||0;if(target>0&&have>=target)return"done";if(have>0)return"partial";return"todo"}
@@ -284,7 +323,7 @@ function render(){
   if(expired.length){al.classList.add("show","crit");al.innerHTML="<b>Expired:</b> "+esc(expired.join(", "))+". Replace and update the date."}
   else if(expSoon.length){al.classList.add("show","warn");al.innerHTML="<b>Expiring within 90 days:</b> "+esc(expSoon.join(", "))+". Eat, rotate, and buy fresh."}
   const host=$("list");host.innerHTML="";
-  const shown=list.filter(it=>(!filterMonth||String(it.month)===filterMonth)&&(!filterCat||it.category===filterCat)&&(!filterState||(filterState==="exp"?!!expState(it):stateOf(it)===filterState)));
+  const shown=list.filter(it=>(!filterMonth||String(it.month)===filterMonth)&&(!filterCat||it.category===filterCat)&&(!filterState||(filterState==="exp"?!!expState(it):stateOf(it)===filterState))&&(!filterStore||(filterStore==="none"?!it.store:it.store===filterStore)));
   if(!list.length){host.innerHTML='<div class="empty">No items yet. Tap “Add item”, or use the ⋯ menu to reset to the plan\'s list.</div>';return}
   if(!shown.length){host.innerHTML='<div class="empty">Nothing matches these filters.</div>';return}
   CATS.forEach(cat=>{
@@ -308,7 +347,7 @@ function rowEl(it){
   const ep=e==="crit"?'<span class="pill crit">Expired '+fmtDate(it.expires)+'</span>':e==="warn"?'<span class="pill warn">Expires '+fmtDate(it.expires)+'</span>':it.expires?'<span>Exp. '+fmtDate(it.expires)+'</span>':'';
   el.innerHTML='<div class="name">'+nameHtml+'</div>'
    +'<div class="qty"><button aria-label="one less" data-a="dec">−</button><div class="n">'+(+it.have||0)+' <small>/ '+(+it.target||0)+'</small></div><button aria-label="one more" data-a="inc">+</button></div>'
-   +'<div class="meta">'+pill+'<span class="pill">Mo '+esc(it.month)+'</span>'+(price?'<span>'+price+'</span>':'')+(line?'<span>line '+money(line)+'</span>':'')+(it.shelf?'<span>'+esc(it.shelf)+' yr shelf</span>':'')+ep+'<button class="toggle" data-a="open">'+(openId===it.id?"close":"details")+'</button></div>'
+   +'<div class="meta">'+pill+'<span class="pill">Mo '+esc(it.month)+'</span>'+(it.store?'<span class="pill store">'+esc(it.store)+'</span>':'')+(it.grade?'<span class="pill grade">'+esc(it.grade)+'</span>':'')+(price?'<span>'+price+'</span>':'')+(line?'<span>line '+money(line)+'</span>':'')+(it.shelf?'<span>'+esc(it.shelf)+' yr shelf</span>':'')+ep+'<button class="toggle" data-a="open">'+(openId===it.id?"close":"details")+'</button></div>'
    +'<div class="more">'
    +'<div><label>Have</label><input type="number" min="0" data-f="have" value="'+(+it.have||0)+'"></div>'
    +'<div><label>Target</label><input type="number" min="0" data-f="target" value="'+(+it.target||0)+'"></div>'
@@ -318,6 +357,8 @@ function rowEl(it){
    +'<div><label>Expires</label><input type="date" data-f="expires" value="'+esc(it.expires||"")+'"></div>'
    +'<div><label>Gallons each</label><input type="number" min="0" step="0.1" data-f="gallons" value="'+esc(it.gallons??"")+'"></div>'
    +'<div><label>Calories each</label><input type="number" min="0" step="100" data-f="calories" value="'+esc(it.calories??"")+'"></div>'
+   +'<div><label>Store</label><select data-f="store"><option value="">Walmart / online</option>'+STORES.slice(0,3).map(st=>'<option'+(it.store===st?" selected":"")+'>'+st+'</option>').join("")+'</select></div>'
+   +'<div><label>Grade</label><input type="text" data-f="grade" value="'+esc(it.grade||"")+'" placeholder="A (7)"></div>'
    +'<div><label>Shelf life (yrs)</label><input type="number" min="0" step="0.5" data-f="shelf" value="'+esc(it.shelf??"")+'"></div>'
    +'<div class="full"><label>Name</label><input type="text" data-f="name" value="'+esc(it.name)+'"></div>'
    +'<div class="full"><label>Link</label><input type="url" data-f="link" value="'+esc(it.link||"")+'"></div>'
@@ -329,7 +370,7 @@ function rowEl(it){
     else if(act==="dec")save(it.id,{have:Math.max(0,(+it.have||0)-1)});
     else if(act==="open"){openId=openId===it.id?null:it.id;render()}
     else if(act==="bought"){const d={have:+it.target||0,purchased:today()};if(+it.shelf&&!it.expires){const x=new Date();const y=Math.floor(+it.shelf);x.setFullYear(x.getFullYear()+y);x.setMonth(x.getMonth()+Math.round((+it.shelf-y)*12));d.expires=x.toISOString().slice(0,10)}save(it.id,d);toast("Marked bought")}
-    else if(act==="del"){if(a.dataset.sure){delete items[it.id];openId=null;persist();render();toast("Removed")}else{a.dataset.sure="1";a.textContent="Tap again to remove"}}
+    else if(act==="del"){if(a.dataset.sure){delete items[it.id];settings.removed=(settings.removed||[]).concat(it.id);openId=null;persist();render();toast("Removed")}else{a.dataset.sure="1";a.textContent="Tap again to remove"}}
   });
   el.querySelectorAll("[data-f]").forEach(inp=>inp.addEventListener("change",()=>{const f=inp.dataset.f;let v=inp.value;if(inp.type==="number")v=v===""?null:+v;const d={};d[f]=v;save(it.id,d)}));
   return el;
@@ -342,7 +383,7 @@ $("dlgCancel").onclick=()=>dlg.close();
 form.addEventListener("submit",ev=>{ev.preventDefault();
   const num=id=>$(id).value===""?null:+$(id).value;
   const id="i"+Date.now().toString(36);
-  items[id]={id,name:$("fName").value.trim(),category:$("fCat").value,month:$("fMonth").value,target:num("fTarget")||0,have:0,price:num("fPrice"),gallons:num("fGal"),calories:num("fCal"),shelf:num("fShelf"),link:$("fLink").value.trim()||null,notes:$("fNotes").value.trim()||null,purchased:null,expires:null};
+  items[id]={id,name:$("fName").value.trim(),category:$("fCat").value,month:$("fMonth").value,target:num("fTarget")||0,have:0,price:num("fPrice"),gallons:num("fGal"),calories:num("fCal"),shelf:num("fShelf"),store:$("fStore").value||null,grade:$("fGrade").value.trim()||null,link:$("fLink").value.trim()||null,notes:$("fNotes").value.trim()||null,purchased:null,expires:null};
   dlg.close();persist();render();toast("Added")});
 
 $("people").addEventListener("change",e=>{settings.people=Math.max(1,+e.target.value||4);persist();render()});
@@ -354,9 +395,9 @@ $("exportBtn").onclick=()=>{menu.classList.remove("open");const blob=new Blob([J
 $("importBtn").onclick=()=>{menu.classList.remove("open");$("importFile").click()};
 $("importFile").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.items)throw 0;items=d.items;settings=d.settings||settings;$("people").value=settings.people||4;persist();render();toast("Backup imported")}catch(x){toast("That file isn't a tracker backup")}};r.readAsText(f);e.target.value=""};
 let resetArmed=false;
-$("resetBtn").onclick=()=>{if(!resetArmed){resetArmed=true;$("resetBtn").textContent="Tap again to reset (erases progress)";setTimeout(()=>{resetArmed=false;$("resetBtn").textContent="Reset to the plan's list"},4000);return}menu.classList.remove("open");items=seedItems();settings={people:4};$("people").value=4;persist();render();toast("Reset to plan")};
+$("resetBtn").onclick=()=>{if(!resetArmed){resetArmed=true;$("resetBtn").textContent="Tap again to reset (erases progress)";setTimeout(()=>{resetArmed=false;$("resetBtn").textContent="Reset to the plan's list"},4000);return}menu.classList.remove("open");items=seedItems();settings={people:4,seedVersion:SEED_VERSION};$("people").value=4;persist();render();toast("Reset to plan")};
 
-load();$("people").value=settings.people||4;render();
+load();migrate();$("people").value=settings.people||4;render();
 })();
 </script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{})}</script>
