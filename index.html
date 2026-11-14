@@ -71,7 +71,8 @@ h1{font-family:var(--display);font-weight:700;font-size:30px;letter-spacing:.3px
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{font:inherit;font-size:13px;font-weight:500;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer}
 .chip.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
-.toolbar select{font:inherit;font-size:13px;padding:5px 8px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--fg)}
+.toolbar select{font:inherit;font-size:13px;padding:5px 6px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--fg);min-width:0;width:100%}
+.filters{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;flex:1 1 100%;min-width:0}
 .btn{font:inherit;font-size:13px;font-weight:600;padding:6px 12px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer}
 .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .btn:focus-visible,.chip:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -212,9 +213,11 @@ footer{margin-top:28px;font-size:12px;color:var(--muted)}
 
 <div class="toolbar">
   <button class="btn" id="expBtn">Expiring</button>
-  <select id="catFilter" aria-label="Category"><option value="">All categories</option></select>
-  <select id="storeFilter" aria-label="Store"><option value="">All stores</option><option value="Sam's">Sam's Club</option><option value="Costco">Costco</option><option value="Either">Either warehouse</option><option value="none">Walmart / online</option></select>
-  <select id="stateFilter" aria-label="Status"><option value="">All items</option><option value="todo">Still to buy</option><option value="partial">Partly bought</option><option value="done">Complete</option><option value="exp">Expiring / expired</option></select>
+  <div class="filters">
+  <select id="catFilter" aria-label="Category"><option value="">Categories</option></select>
+  <select id="storeFilter" aria-label="Store"><option value="">Stores</option><option value="Sam's">Sam's Club</option><option value="Costco">Costco</option><option value="Either">Either warehouse</option><option value="none">Walmart / online</option></select>
+  <select id="stateFilter" aria-label="Status"><option value="">Status</option><option value="todo">Still to buy</option><option value="partial">Partly bought</option><option value="done">Complete</option><option value="exp">Expiring / expired</option></select>
+  </div>
   <span class="spacer"></span>
   <button class="btn primary" id="addBtn">+ Add item</button>
   <input type="file" id="importFile" accept="application/json" hidden>
