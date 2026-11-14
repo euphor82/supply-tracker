@@ -116,6 +116,18 @@ dialog h3{font-family:var(--display);font-size:22px;margin:0 0 10px}
 .form .acts{grid-column:1/-1;display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
 .toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.show{opacity:1}
+.exp-note{font-size:13px;color:var(--muted);margin-bottom:10px}
+.exp-group{margin-top:12px}
+.exp-group h4{font-family:var(--display);font-size:16px;margin:0 0 4px;display:flex;gap:8px;align-items:baseline}
+.exp-group h4 span{font-family:var(--body);font-size:12px;font-weight:500;color:var(--muted)}
+.exp-row{display:grid;grid-template-columns:5.2em 1fr auto;gap:10px;align-items:baseline;padding:6px 0;border-top:1px solid var(--line);font-size:14px}
+.exp-row .d{font-variant-numeric:tabular-nums;font-weight:600}
+.exp-row .d.crit{color:var(--crit)}.exp-row .d.warn{color:var(--warn)}
+.exp-row .n{min-width:0;overflow-wrap:anywhere}
+.exp-row .n small{color:var(--muted)}
+.exp-row .in{font-size:12px;color:var(--muted);white-space:nowrap}
+.exp-empty{color:var(--muted);padding:12px 0}
+#expBtn.hot{border-color:var(--crit);color:var(--crit);font-weight:600}
 footer{margin-top:28px;font-size:12px;color:var(--muted)}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
 </style>
@@ -128,7 +140,7 @@ footer{margin-top:28px;font-size:12px;color:var(--muted)}
   <div class="status" id="status">Saved on this device</div>
 </header>
 
-<div class="tiles">
+<div class="tiles" id="tiles">
   <div class="tile"><div class="lbl">Water on hand</div><div class="val" id="tWater">0<small>days</small></div><div class="bar"><i id="bWater" style="width:0%"></i></div><div class="hint" id="hWater">0 gal stored · goal 14 days</div></div>
   <div class="tile"><div class="lbl">Food on hand</div><div class="val" id="tFood">0<small>days</small></div><div class="bar"><i id="bFood" style="width:0%"></i></div><div class="hint" id="hFood">0 cal stored · goal 30 days</div></div>
   <div class="tile"><div class="lbl">Items complete</div><div class="val" id="tItems">0<small>/ 0</small></div><div class="bar g"><i id="bItems" style="width:0%"></i></div><div class="hint" id="hItems">0 partially bought</div></div>
@@ -138,7 +150,7 @@ footer{margin-top:28px;font-size:12px;color:var(--muted)}
 <div class="alert" id="alert"></div>
 
 <div class="toolbar">
-  <div class="chips" id="monthChips"></div>
+  <button class="btn" id="expBtn">Expiring</button>
   <select id="catFilter" aria-label="Category"><option value="">All categories</option></select>
   <select id="storeFilter" aria-label="Store"><option value="">All stores</option><option value="Sam's">Sam's Club</option><option value="Costco">Costco</option><option value="Either">Either warehouse</option><option value="none">Walmart / online</option></select>
   <select id="stateFilter" aria-label="Status"><option value="">All items</option><option value="todo">Still to buy</option><option value="partial">Partly bought</option><option value="done">Complete</option><option value="exp">Expiring / expired</option></select>
@@ -163,7 +175,6 @@ footer{margin-top:28px;font-size:12px;color:var(--muted)}
   <form class="form" id="form" method="dialog">
     <div class="full"><label for="fName">Item</label><input id="fName" required></div>
     <div><label for="fCat">Category</label><select id="fCat"></select></div>
-    <div><label for="fMonth">Buy in month</label><select id="fMonth"></select></div>
     <div><label for="fTarget">Target qty</label><input id="fTarget" type="number" min="0" step="1" value="1"></div>
     <div><label for="fPrice">Price each ($)</label><input id="fPrice" type="number" min="0" step="0.01"></div>
     <div><label for="fGal">Gallons each (water)</label><input id="fGal" type="number" min="0" step="0.1"></div>
@@ -175,6 +186,12 @@ footer{margin-top:28px;font-size:12px;color:var(--muted)}
     <div class="full"><label for="fNotes">Notes</label><input id="fNotes"></div>
     <div class="acts"><button type="button" class="btn" id="dlgCancel">Cancel</button><button type="submit" class="btn primary">Save</button></div>
   </form>
+</dialog>
+<dialog id="expDlg">
+  <h3 id="expTitle">Expiring</h3>
+  <div class="exp-note" id="expNote"></div>
+  <div id="expList"></div>
+  <div class="form"><div class="acts"><button type="button" class="btn" id="expClose">Close</button></div></div>
 </dialog>
 <div class="toast" id="toast"></div>
 
@@ -281,7 +298,7 @@ function migrate(){const v=+settings.seedVersion||1;if(v>=SEED_VERSION)return;co
 
 const $=id=>document.getElementById(id);
 const KEY="supplyTracker.v1";
-let items={}, settings={people:4}, filterMonth="", filterCat="", filterState="", filterStore="", openId=null;
+let items={}, settings={people:4}, filterCat="", filterState="", filterStore="", openId=null;
 const STORES=["Sam's","Costco","Either","Walmart / online"];
 const today=()=>new Date().toISOString().slice(0,10);
 const money=n=>"$"+Math.round(n).toLocaleString();
@@ -291,15 +308,12 @@ function load(){try{const s=JSON.parse(localStorage.getItem(KEY)||"null");if(s&&
 function persist(){try{localStorage.setItem(KEY,JSON.stringify({items,settings,saved:new Date().toISOString()}));$("status").textContent="Saved on this device"}catch(e){$("status").textContent="Couldn't save (storage blocked)"}}
 
 // chips / selects
-MONTHS.forEach(m=>{const b=document.createElement("button");b.className="chip";b.textContent="Mo "+m;b.dataset.m=m;b.onclick=()=>{filterMonth=filterMonth===m?"":m;render()};$("monthChips").appendChild(b)});
-const allChip=document.createElement("button");allChip.className="chip";allChip.textContent="All";allChip.onclick=()=>{filterMonth="";render()};$("monthChips").prepend(allChip);
 CATS.forEach(c=>{const o=document.createElement("option");o.value=c;o.textContent=c;$("catFilter").appendChild(o);$("fCat").appendChild(o.cloneNode(true))});
-MONTHS.forEach(m=>{const o=document.createElement("option");o.value=m;o.textContent="Month "+m;$("fMonth").appendChild(o)});
 $("catFilter").onchange=e=>{filterCat=e.target.value;render()};
 $("stateFilter").onchange=e=>{filterState=e.target.value;render()};
 $("storeFilter").onchange=e=>{filterStore=e.target.value;render()};
-try{const s=JSON.parse(localStorage.getItem("supplyTracker.filters")||"{}");filterMonth=s.m||"";filterCat=s.c||"";filterState=s.s||"";filterStore=s.st||"";$("catFilter").value=filterCat;$("stateFilter").value=filterState;$("storeFilter").value=filterStore}catch(e){}
-function saveFilters(){try{localStorage.setItem("supplyTracker.filters",JSON.stringify({m:filterMonth,c:filterCat,s:filterState,st:filterStore}))}catch(e){}}
+try{const s=JSON.parse(localStorage.getItem("supplyTracker.filters")||"{}");filterCat=s.c||"";filterState=s.s||"";filterStore=s.st||"";$("catFilter").value=filterCat;$("stateFilter").value=filterState;$("storeFilter").value=filterStore}catch(e){}
+function saveFilters(){try{localStorage.setItem("supplyTracker.filters",JSON.stringify({c:filterCat,s:filterState,st:filterStore}))}catch(e){}}
 
 function toast(t){const el=$("toast");el.textContent=t;el.classList.add("show");clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove("show"),1800)}
 function stateOf(it){const have=+it.have||0,target=+it.target||0;if(target>0&&have>=target)return"done";if(have>0)return"partial";return"todo"}
@@ -309,7 +323,6 @@ function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&l
 
 function render(){
   saveFilters();
-  document.querySelectorAll("#monthChips .chip").forEach(b=>b.classList.toggle("on",(b.dataset.m||"")===filterMonth));
   const list=Object.values(items);
   const people=+settings.people||4;
   let gal=0,cal=0,done=0,part=0,spent=0,planned=0,expSoon=[],expired=[];
@@ -323,11 +336,11 @@ function render(){
   if(expired.length){al.classList.add("show","crit");al.innerHTML="<b>Expired:</b> "+esc(expired.join(", "))+". Replace and update the date."}
   else if(expSoon.length){al.classList.add("show","warn");al.innerHTML="<b>Expiring within 90 days:</b> "+esc(expSoon.join(", "))+". Eat, rotate, and buy fresh."}
   const host=$("list");host.innerHTML="";
-  const shown=list.filter(it=>(!filterMonth||String(it.month)===filterMonth)&&(!filterCat||it.category===filterCat)&&(!filterState||(filterState==="exp"?!!expState(it):stateOf(it)===filterState))&&(!filterStore||(filterStore==="none"?!it.store:it.store===filterStore)));
+  const shown=list.filter(it=>(!filterCat||it.category===filterCat)&&(!filterState||(filterState==="exp"?!!expState(it):stateOf(it)===filterState))&&(!filterStore||(filterStore==="none"?!it.store:it.store===filterStore)));
   if(!list.length){host.innerHTML='<div class="empty">No items yet. Tap “Add item”, or use the ⋯ menu to reset to the plan\'s list.</div>';return}
   if(!shown.length){host.innerHTML='<div class="empty">Nothing matches these filters.</div>';return}
   CATS.forEach(cat=>{
-    const rows=shown.filter(it=>it.category===cat).sort((a,b)=>(MONTHS.indexOf(String(a.month))-MONTHS.indexOf(String(b.month)))||a.name.localeCompare(b.name));
+    const rows=shown.filter(it=>it.category===cat).sort((a,b)=>a.name.localeCompare(b.name));
     if(!rows.length)return;
     const sec=document.createElement("section");sec.className="cat";
     const d=rows.filter(r=>stateOf(r)==="done").length;
@@ -347,12 +360,11 @@ function rowEl(it){
   const ep=e==="crit"?'<span class="pill crit">Expired '+fmtDate(it.expires)+'</span>':e==="warn"?'<span class="pill warn">Expires '+fmtDate(it.expires)+'</span>':it.expires?'<span>Exp. '+fmtDate(it.expires)+'</span>':'';
   el.innerHTML='<div class="name">'+nameHtml+'</div>'
    +'<div class="qty"><button aria-label="one less" data-a="dec">−</button><div class="n">'+(+it.have||0)+' <small>/ '+(+it.target||0)+'</small></div><button aria-label="one more" data-a="inc">+</button></div>'
-   +'<div class="meta">'+pill+'<span class="pill">Mo '+esc(it.month)+'</span>'+(it.store?'<span class="pill store">'+esc(it.store)+'</span>':'')+(it.grade?'<span class="pill grade">'+esc(it.grade)+'</span>':'')+(price?'<span>'+price+'</span>':'')+(line?'<span>line '+money(line)+'</span>':'')+(it.shelf?'<span>'+esc(it.shelf)+' yr shelf</span>':'')+ep+'<button class="toggle" data-a="open">'+(openId===it.id?"close":"details")+'</button></div>'
+   +'<div class="meta">'+pill+(it.store?'<span class="pill store">'+esc(it.store)+'</span>':'')+(it.grade?'<span class="pill grade">'+esc(it.grade)+'</span>':'')+(price?'<span>'+price+'</span>':'')+(line?'<span>line '+money(line)+'</span>':'')+(it.shelf?'<span>'+esc(it.shelf)+' yr shelf</span>':'')+ep+'<button class="toggle" data-a="open">'+(openId===it.id?"close":"details")+'</button></div>'
    +'<div class="more">'
    +'<div><label>Have</label><input type="number" min="0" data-f="have" value="'+(+it.have||0)+'"></div>'
    +'<div><label>Target</label><input type="number" min="0" data-f="target" value="'+(+it.target||0)+'"></div>'
    +'<div><label>Price each</label><input type="number" min="0" step="0.01" data-f="price" value="'+esc(it.price??"")+'"></div>'
-   +'<div><label>Buy month</label><select data-f="month">'+MONTHS.map(m=>'<option'+(String(it.month)===m?" selected":"")+'>'+m+'</option>').join("")+'</select></div>'
    +'<div><label>Purchased</label><input type="date" data-f="purchased" value="'+esc(it.purchased||"")+'"></div>'
    +'<div><label>Expires</label><input type="date" data-f="expires" value="'+esc(it.expires||"")+'"></div>'
    +'<div><label>Gallons each</label><input type="number" min="0" step="0.1" data-f="gallons" value="'+esc(it.gallons??"")+'"></div>'
@@ -383,8 +395,29 @@ $("dlgCancel").onclick=()=>dlg.close();
 form.addEventListener("submit",ev=>{ev.preventDefault();
   const num=id=>$(id).value===""?null:+$(id).value;
   const id="i"+Date.now().toString(36);
-  items[id]={id,name:$("fName").value.trim(),category:$("fCat").value,month:$("fMonth").value,target:num("fTarget")||0,have:0,price:num("fPrice"),gallons:num("fGal"),calories:num("fCal"),shelf:num("fShelf"),store:$("fStore").value||null,grade:$("fGrade").value.trim()||null,link:$("fLink").value.trim()||null,notes:$("fNotes").value.trim()||null,purchased:null,expires:null};
+  items[id]={id,name:$("fName").value.trim(),category:$("fCat").value,target:num("fTarget")||0,have:0,price:num("fPrice"),gallons:num("fGal"),calories:num("fCal"),shelf:num("fShelf"),store:$("fStore").value||null,grade:$("fGrade").value.trim()||null,link:$("fLink").value.trim()||null,notes:$("fNotes").value.trim()||null,purchased:null,expires:null};
   dlg.close();persist();render();toast("Added")});
+
+// --- expiring view ---
+function daysUntil(d){return Math.round((new Date(d+"T00:00:00")-new Date(today()+"T00:00:00"))/864e5)}
+function expiringItems(){return Object.values(items).filter(it=>it.expires).map(it=>({it,days:daysUntil(it.expires)})).sort((a,b)=>a.days-b.days)}
+function showExpiring(auto){
+  const rows=expiringItems();
+  const groups=[["Expired",r=>r.days<0],["Next 30 days",r=>r.days>=0&&r.days<=30],["31–90 days",r=>r.days>30&&r.days<=90],["Within a year",r=>r.days>90&&r.days<=365],["Later",r=>r.days>365]];
+  const host=$("expList");host.innerHTML="";
+  $("expTitle").textContent=auto?"Heads up: expiring soon":"Expiring";
+  const soon=rows.filter(r=>r.days<=30).length;
+  $("expNote").textContent=rows.length?(soon?soon+" item"+(soon>1?"s":"")+" expired or due within 30 days. Eat it, restock, then set the new date in the item's details.":"Nothing is due within 30 days."):"No expiration dates set yet. Open an item's details and fill in Expires, or tap “Mark fully bought today” on items with a shelf life.";
+  groups.forEach(([label,f])=>{const g=rows.filter(f);if(!g.length)return;const sec=document.createElement("div");sec.className="exp-group";sec.innerHTML="<h4>"+label+"<span>"+g.length+"</span></h4>";
+    g.forEach(r=>{const cls=r.days<0?"crit":r.days<=90?"warn":"";const when=r.days<0?Math.abs(r.days)+" days ago":r.days===0?"today":r.days>730?"in "+Math.round(r.days/365)+" years":r.days>120?"in "+Math.round(r.days/30)+" months":"in "+r.days+" days";
+      const row=document.createElement("div");row.className="exp-row";row.innerHTML='<div class="d '+cls+'">'+fmtShort(r.it.expires)+'</div><div class="n">'+esc(r.it.name)+' <small>· have '+(+r.it.have||0)+'</small></div><div class="in">'+when+'</div>';sec.appendChild(row)});
+    host.appendChild(sec)});
+  $("expDlg").showModal();
+}
+function fmtShort(s){const d=new Date(s+"T00:00:00");return d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"2-digit"})}
+$("expBtn").onclick=()=>showExpiring(false);
+$("expClose").onclick=()=>$("expDlg").close();
+function expiringPopup(){const soon=expiringItems().filter(r=>r.days<=30);$("expBtn").classList.toggle("hot",soon.length>0);if(!soon.length)return;let last="";try{last=localStorage.getItem("supplyTracker.expAlert")||""}catch(e){}if(last===today())return;try{localStorage.setItem("supplyTracker.expAlert",today())}catch(e){}showExpiring(true)}
 
 $("people").addEventListener("change",e=>{settings.people=Math.max(1,+e.target.value||4);persist();render()});
 
@@ -397,7 +430,7 @@ $("importFile").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new 
 let resetArmed=false;
 $("resetBtn").onclick=()=>{if(!resetArmed){resetArmed=true;$("resetBtn").textContent="Tap again to reset (erases progress)";setTimeout(()=>{resetArmed=false;$("resetBtn").textContent="Reset to the plan's list"},4000);return}menu.classList.remove("open");items=seedItems();settings={people:4,seedVersion:SEED_VERSION};$("people").value=4;persist();render();toast("Reset to plan")};
 
-load();migrate();$("people").value=settings.people||4;render();
+load();migrate();$("people").value=settings.people||4;render();expiringPopup();
 })();
 </script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{})}</script>
