@@ -116,6 +116,10 @@ section.cat h2 span{font-family:var(--body);font-size:12px;font-weight:500;color
 .btn.danger{color:var(--crit)}
 .toggle{font:inherit;font-size:12px;color:var(--muted);background:none;border:0;cursor:pointer;padding:0;text-decoration:underline}
 
+.listbar{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 12px}
+.lb-top{display:flex;justify-content:space-between;gap:10px;font-weight:600;font-size:14px}
+.lb-top #lbNums{font-family:var(--display);font-size:20px;font-variant-numeric:tabular-nums}
+.lb-sub{font-size:12px;color:var(--muted);margin-top:5px}
 .empty{margin-top:24px;padding:22px;border:1px dashed var(--line);border-radius:6px;color:var(--muted);text-align:center}
 dialog{border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--fg);width:min(92vw,520px);padding:16px}
 dialog::backdrop{background:rgba(0,0,0,.45)}
@@ -216,6 +220,7 @@ footer{margin-top:28px;font-size:12px;color:var(--muted)}
   <input type="file" id="importFile" accept="application/json" hidden>
 </div>
 
+<div class="listbar" id="listbar" hidden><div class="lb-top"><span id="lbLabel">All items</span><span id="lbNums"></span></div><div class="bar g"><i id="lbBar" style="width:0%"></i></div><div class="lb-sub" id="lbSub"></div></div>
 <div id="list"></div>
 
 <footer>Prices are from the Nov 1, 2026 plan and the Nov 13 Sam’s/Costco pantry list; edit any item to update them.</footer>
@@ -430,6 +435,10 @@ function render(){
   else if(expSoon.length){al.classList.add("show","warn");al.innerHTML="<b>Expiring within 90 days:</b> "+esc(expSoon.join(", "))+". Eat, rotate, and buy fresh."}
   const host=$("list");host.innerHTML="";
   const shown=list.filter(it=>(!filterCat||it.category===filterCat)&&(!filterState||(filterState==="exp"?!!expState(it):stateOf(it)===filterState))&&(!filterStore||(filterStore==="none"?!it.store:it.store===filterStore)));
+  {const lb=$("listbar");lb.hidden=!shown.length;if(shown.length){const d=shown.filter(stateOf2=>stateOf(stateOf2)==="done").length,pt=shown.filter(x=>stateOf(x)==="partial").length;let sp=0,pl=0,hv=0,tg=0;shown.forEach(x=>{sp+=(+x.have||0)*(+x.price||0);pl+=(+x.target||0)*(+x.price||0);hv+=Math.min(+x.have||0,+x.target||0);tg+=+x.target||0});const pct=tg?hv/tg*100:0;
+    const parts=[];if(filterCat)parts.push(filterCat);if(filterStore)parts.push(filterStore==="none"?"Walmart / online":filterStore==="Either"?"Either warehouse":filterStore);if(filterState)parts.push({todo:"still to buy",partial:"partly bought",done:"complete",exp:"expiring"}[filterState]);
+    $("lbLabel").textContent=parts.length?parts.join(" · "):"All items";$("lbNums").textContent=Math.round(pct)+"%";$("lbBar").style.width=pct+"%";
+    $("lbSub").textContent=d+" of "+shown.length+" items complete"+(pt?", "+pt+" partial":"")+" · "+hv+" of "+tg+" units · "+money(sp)+" of "+money(pl)}}
   if(!list.length){host.innerHTML='<div class="empty">No items yet. Tap “Add item”, or use the ⋯ menu to reset to the plan\'s list.</div>';return}
   if(!shown.length){host.innerHTML='<div class="empty">Nothing matches these filters.</div>';return}
   CATS.forEach(cat=>{
