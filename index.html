@@ -108,6 +108,10 @@ section.cat h2 span{font-family:var(--body);font-size:12px;font-weight:500;color
 .more label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);display:block}
 .more input,.more select,.more textarea{width:100%;font:inherit;font-size:14px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:5px 6px}
 .more .full{grid-column:1/-1}
+.cf{position:relative;display:block}
+.cf input,.cf textarea,.cf select{padding-right:28px!important}
+.cf .x{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:22px;height:22px;border:0;border-radius:50%;background:var(--line);color:var(--fg);font-size:13px;line-height:22px;text-align:center;cursor:pointer;padding:0}
+.cf .x:hover{background:var(--muted);color:var(--bg)}
 .more .acts{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
 .btn.danger{color:var(--crit)}
 .toggle{font:inherit;font-size:12px;color:var(--muted);background:none;border:0;cursor:pointer;padding:0;text-decoration:underline}
@@ -478,6 +482,7 @@ function rowEl(it){
     else if(act==="del"){if(a.dataset.sure){delete items[it.id];settings.removed=(settings.removed||[]).concat(it.id);openId=null;persist();render();toast("Removed")}else{a.dataset.sure="1";a.textContent="Tap again to remove"}}
   });
   el.querySelectorAll("[data-f]").forEach(inp=>inp.addEventListener("change",()=>{const f=inp.dataset.f;let v=inp.value;if(inp.type==="number")v=v===""?null:+v;const d={};d[f]=v;save(it.id,d)}));
+  el.querySelectorAll('.more input[data-f]:not([data-f="name"]), .more textarea[data-f]').forEach(inp=>{const w=document.createElement("span");w.className="cf";inp.parentNode.insertBefore(w,inp);w.appendChild(inp);const x=document.createElement("button");x.type="button";x.className="x";x.title="Clear";x.setAttribute("aria-label","Clear field");x.textContent="×";x.onclick=()=>{inp.value="";inp.dispatchEvent(new Event("change"))};w.appendChild(x)});
   const ph=el.querySelector("[data-photo]");if(ph)ph.addEventListener("change",async()=>{const f=ph.files[0];if(!f)return;try{const data=await shrinkImage(f,420,0.62);save(it.id,{photo:data});toast("Photo saved")}catch(e){toast("Couldn't read that photo")}});
   return el;
 }
@@ -586,6 +591,7 @@ $("hhDone").onclick=()=>$("hhDlg").close();
 // --- photos ---
 function shrinkImage(file,max,q){return new Promise((res,rej)=>{const img=new Image();const url=URL.createObjectURL(file);img.onload=()=>{const r=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement("canvas");c.width=Math.round(img.width*r);c.height=Math.round(img.height*r);c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);res(c.toDataURL("image/jpeg",q))};img.onerror=rej;img.src=url})}
 $("photoClose").onclick=()=>$("photoDlg").close();
+document.querySelectorAll('#form input:not(#fName), #scanExp, #scanQty').forEach(inp=>{const w=document.createElement("span");w.className="cf";inp.parentNode.insertBefore(w,inp);w.appendChild(inp);const x=document.createElement("button");x.type="button";x.className="x";x.title="Clear";x.setAttribute("aria-label","Clear field");x.textContent="×";x.onclick=()=>{inp.value=""};w.appendChild(x)});
 
 // --- CSV + print ---
 function csvCell(v){v=v==null?"":String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
