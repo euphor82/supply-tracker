@@ -53,6 +53,9 @@ h1{font-family:var(--display);font-weight:700;font-size:30px;letter-spacing:.3px
 .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
 @media (max-width:560px){.tiles{grid-template-columns:repeat(2,1fr)}}
 .tile{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 12px;min-width:0}
+.tile.click{font:inherit;color:inherit;text-align:left;cursor:pointer;width:100%}
+.tile.click:hover{border-color:var(--muted)}
+.tile.click.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .tile .lbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .tile .val{font-family:var(--display);font-size:30px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums;margin-top:2px}
 .tile .val small{font-size:15px;font-weight:600;color:var(--muted);margin-left:3px}
@@ -199,8 +202,8 @@ footer{margin-top:28px;font-size:12px;color:var(--muted)}
 </header>
 
 <div class="tiles" id="tiles">
-  <div class="tile"><div class="lbl">Water on hand</div><div class="val" id="tWater">0<small>days</small></div><div class="bar"><i id="bWater" style="width:0%"></i></div><div class="hint" id="hWater">0 gal stored · goal 14 days</div></div>
-  <div class="tile"><div class="lbl">Food on hand</div><div class="val" id="tFood">0<small>days</small></div><div class="bar"><i id="bFood" style="width:0%"></i></div><div class="hint" id="hFood">0 cal stored · goal 30 days</div></div>
+  <button class="tile click" id="tileWater" type="button"><div class="lbl">Water on hand</div><div class="val" id="tWater">0<small>days</small></div><div class="bar"><i id="bWater" style="width:0%"></i></div><div class="hint" id="hWater">0 gal stored · goal 14 days</div></button>
+  <button class="tile click" id="tileFood" type="button"><div class="lbl">Food on hand</div><div class="val" id="tFood">0<small>days</small></div><div class="bar"><i id="bFood" style="width:0%"></i></div><div class="hint" id="hFood">0 cal stored · goal 30 days</div></button>
   <div class="tile"><div class="lbl">Items complete</div><div class="val" id="tItems">0<small>/ 0</small></div><div class="bar g"><i id="bItems" style="width:0%"></i></div><div class="hint" id="hItems">0 partially bought</div></div>
   <div class="tile"><div class="lbl">Spent so far</div><div class="val" id="tSpent">$0</div><div class="bar"><i id="bSpent" style="width:0%"></i></div><div class="hint" id="hSpent">of $0 planned</div></div>
 </div>
@@ -403,8 +406,10 @@ function load(){try{const s=JSON.parse(localStorage.getItem(KEY)||"null");if(s&&
 function persist(){try{const json=JSON.stringify({items,settings,saved:new Date().toISOString()});localStorage.setItem(KEY,json);$("status").textContent=json.length>3500000?"Saved · storage nearly full, remove some photos":"Saved on this device"}catch(e){$("status").textContent="Couldn't save — storage full (remove some photos)";toast("Storage full: remove a photo or two")}}
 
 // chips / selects
-CATS.forEach(c=>{const o=document.createElement("option");o.value=c;o.textContent=c;$("catFilter").appendChild(o);$("fCat").appendChild(o.cloneNode(true))});
+CATS.forEach(c=>{if(c==="Food: grab-and-go"){const f=document.createElement("option");f.value="Food:*";f.textContent="All food";$("catFilter").appendChild(f)}const o=document.createElement("option");o.value=c;o.textContent=c;$("catFilter").appendChild(o);$("fCat").appendChild(o.cloneNode(true))});
 $("catFilter").onchange=e=>{filterCat=e.target.value;render()};
+$("tileWater").onclick=()=>{filterCat=filterCat==="Water"?"":"Water";$("catFilter").value=filterCat;render();$("list").scrollIntoView({behavior:"smooth",block:"start"})};
+$("tileFood").onclick=()=>{filterCat=filterCat==="Food:*"?"":"Food:*";$("catFilter").value=filterCat;render();$("list").scrollIntoView({behavior:"smooth",block:"start"})};
 $("stateFilter").onchange=e=>{filterState=e.target.value;render()};
 $("storeFilter").onchange=e=>{filterStore=e.target.value;render()};
 try{const s=JSON.parse(localStorage.getItem("supplyTracker.filters")||"{}");filterCat=s.c||"";filterState=s.s||"";filterStore=s.st||"";$("catFilter").value=filterCat;$("stateFilter").value=filterState;$("storeFilter").value=filterStore}catch(e){}
@@ -419,6 +424,7 @@ function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&l
 function render(){
   saveFilters();
   const list=Object.values(items);
+  $("tileWater").classList.toggle("on",filterCat==="Water");$("tileFood").classList.toggle("on",filterCat==="Food:*");
   const hh=household();const people=hh.people,dailyCal=hh.cal;
   let gal=0,cal=0,done=0,part=0,spent=0,planned=0,expSoon=[],expired=[];
   list.forEach(it=>{const h=+it.have||0,t=+it.target||0,p=+it.price||0;gal+=h*(+it.gallons||0);cal+=h*(+it.calories||0);spent+=h*p;planned+=t*p;const s=stateOf(it);if(s==="done")done++;else if(s==="partial")part++;const e=expState(it);if(e==="crit")expired.push(it.name);else if(e==="warn")expSoon.push(it.name)});
@@ -432,7 +438,7 @@ function render(){
   if(expired.length){al.classList.add("show","crit");al.innerHTML="<b>Expired:</b> "+esc(expired.join(", "))+". Replace and update the date."}
   else if(expSoon.length){al.classList.add("show","warn");al.innerHTML="<b>Expiring within 90 days:</b> "+esc(expSoon.join(", "))+". Eat, rotate, and buy fresh."}
   const host=$("list");host.innerHTML="";
-  const shown=list.filter(it=>(!filterCat||it.category===filterCat)&&(!filterState||(filterState==="exp"?!!expState(it):stateOf(it)===filterState))&&(!filterStore||(filterStore==="none"?!it.store:it.store===filterStore)));
+  const shown=list.filter(it=>(!filterCat||(filterCat==="Food:*"?it.category.startsWith("Food:"):it.category===filterCat))&&(!filterState||(filterState==="exp"?!!expState(it):stateOf(it)===filterState))&&(!filterStore||(filterStore==="none"?!it.store:it.store===filterStore)));
   if(!list.length){host.innerHTML='<div class="empty">No items yet. Tap “Add item”, or use the ⋯ menu to reset to the plan\'s list.</div>';return}
   if(!shown.length){host.innerHTML='<div class="empty">Nothing matches these filters.</div>';return}
   CATS.forEach(cat=>{
