@@ -9,8 +9,8 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Supplies">
-<title>Family Emergency Supply Tracker</title>
+<meta name="apple-mobile-web-app-title" content="Prepper">
+<title>Prepper</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
 <style>
@@ -40,7 +40,10 @@ body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-
 .wrap{max-width:860px;margin:0 auto}
 header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;padding-block:22px 10px;border-bottom:2px solid var(--fg);position:relative}
 .gear{position:absolute;top:20px;right:0;font-size:20px;line-height:1;padding:4px 9px}
-h1{padding-right:48px}
+.hdr-tools{position:absolute;top:20px;right:44px;display:flex;gap:6px}
+.hdr-tools .btn{padding:6px 10px}
+@media (max-width:420px){.hdr-tools .btn{padding:6px 8px;font-size:12px}}
+h1{padding-right:180px}
 h1{font-family:var(--display);font-weight:700;font-size:30px;letter-spacing:.3px;margin:0;text-wrap:balance}
 .sub{color:var(--muted);font-size:13px}
 .sub b{color:var(--fg)}
@@ -168,7 +171,8 @@ footer{margin-top:28px;font-size:12px;color:var(--muted)}
 <body>
 <div class="wrap">
 <header>
-  <h1>Family Emergency Supply Tracker</h1>
+  <h1>Prepper</h1>
+  <div class="hdr-tools"><button class="btn" id="micBtn" title="Say an item and its expiration date">&#127908; Speak</button><button class="btn" id="scanBtn" title="Scan a barcode">&#9641; Scan</button></div>
   <div class="sub">Sized for <b id="hhSummary">4 people · 8,000 cal/day</b> <button class="toggle" id="hhBtn">household</button></div>
   <div class="status" id="status">Saved on this device</div>
   <div class="menu" id="menu"><button class="btn gear" id="menuBtn" aria-haspopup="true" aria-label="Settings" title="Settings">&#9881;</button>
@@ -200,8 +204,6 @@ footer{margin-top:28px;font-size:12px;color:var(--muted)}
 
 <div class="toolbar">
   <button class="btn" id="expBtn">Expiring</button>
-  <button class="btn" id="micBtn" title="Say an item and its expiration date">&#127908; Speak</button>
-  <button class="btn" id="scanBtn" title="Scan a barcode">&#9641; Scan</button>
   <select id="catFilter" aria-label="Category"><option value="">All categories</option></select>
   <select id="storeFilter" aria-label="Store"><option value="">All stores</option><option value="Sam's">Sam's Club</option><option value="Costco">Costco</option><option value="Either">Either warehouse</option><option value="none">Walmart / online</option></select>
   <select id="stateFilter" aria-label="Status"><option value="">All items</option><option value="todo">Still to buy</option><option value="partial">Partly bought</option><option value="done">Complete</option><option value="exp">Expiring / expired</option></select>
@@ -580,7 +582,7 @@ $("photoClose").onclick=()=>$("photoDlg").close();
 function csvCell(v){v=v==null?"":String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
 function downloadText(name,text,type){const blob=new Blob([text],{type});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
 $("csvBtn").onclick=()=>{$("menu").classList.remove("open");const cols=["category","name","have","target","price","store","grade","purchased","expires","shelf","gallons","calories","link","notes"];const rows=[cols.join(",")];Object.values(items).sort((a,b)=>CATS.indexOf(a.category)-CATS.indexOf(b.category)||a.name.localeCompare(b.name)).forEach(it=>rows.push(cols.map(c=>csvCell(it[c])).join(",")));downloadText("supply-inventory-"+today()+".csv",rows.join("\n"),"text/csv");toast("Spreadsheet downloaded")};
-$("printBtn").onclick=()=>{$("menu").classList.remove("open");const hh=household();let h="<h1>Family Emergency Supply Inventory</h1><div class=sub>Printed "+fmtDate(today())+" · "+hh.people+" people · "+hh.cal.toLocaleString()+" cal/day · "+$("tWater").textContent.replace("days"," days water")+" · "+$("tFood").textContent.replace("days"," days food")+"</div>";
+$("printBtn").onclick=()=>{$("menu").classList.remove("open");const hh=household();let h="<h1>Prepper — Supply Inventory</h1><div class=sub>Printed "+fmtDate(today())+" · "+hh.people+" people · "+hh.cal.toLocaleString()+" cal/day · "+$("tWater").textContent.replace("days"," days water")+" · "+$("tFood").textContent.replace("days"," days food")+"</div>";
   CATS.forEach(cat=>{const rows=Object.values(items).filter(it=>it.category===cat).sort((a,b)=>a.name.localeCompare(b.name));if(!rows.length)return;h+="<h2>"+esc(cat)+"</h2><table><tr><th></th><th>Item</th><th>Have</th><th>Target</th><th>Store</th><th>Expires</th><th>Notes</th></tr>";rows.forEach(it=>{h+="<tr><td><span class=box></span></td><td>"+esc(it.name)+"</td><td class=n>"+(+it.have||0)+"</td><td class=n>"+(+it.target||0)+"</td><td>"+esc(it.store||"")+"</td><td>"+(it.expires?fmtDate(it.expires):"")+"</td><td>"+esc(it.notes||"")+"</td></tr>"});h+="</table>"});
   $("printView").innerHTML=h;$("printView").hidden=false;setTimeout(()=>{window.print();$("printView").hidden=true},50)};
 

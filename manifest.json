@@ -1,6 +1,6 @@
 {
-  "name": "Family Emergency Supply Tracker",
-  "short_name": "Supplies",
+  "name": "Prepper",
+  "short_name": "Prepper",
   "description": "Track emergency food, water and gear purchases, quantities and expiration dates.",
   "start_url": "./index.html",
   "scope": "./",
