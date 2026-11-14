@@ -146,7 +146,22 @@ dialog h3{font-family:var(--display);font-size:22px;margin:0 0 10px}
 .mic-status.live{color:var(--crit);font-weight:600}
 .mic-heard{font-size:14px;color:var(--muted);min-height:1.4em;margin-bottom:6px;overflow-wrap:anywhere}
 #micBtn.live{border-color:var(--crit);color:var(--crit)}
+.pop-check{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13px;padding:4px 6px}
+.pop-check input[type=number]{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:2px 4px}
+.hh-row{display:grid;grid-template-columns:1fr 1fr 5em auto;gap:6px;align-items:end;padding:6px 0;border-top:1px solid var(--line)}
+.hh-row input,.hh-row select{width:100%;font:inherit;font-size:14px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:5px 6px}
+.hh-row label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);display:block}
+.hh-total{margin-top:10px;font-weight:600}
+.scan-wrap{position:relative;background:#000;border-radius:6px;overflow:hidden;aspect-ratio:4/3;max-width:100%}
+.scan-wrap video{width:100%;height:100%;object-fit:cover;display:block}
+.scan-box{position:absolute;inset:18% 10%;border:2px solid rgba(255,255,255,.85);border-radius:8px;pointer-events:none}
+.scan-result{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
+.scan-name{font-family:var(--display);font-size:20px;font-weight:700}
+.thumb{width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid var(--line);cursor:zoom-in;vertical-align:middle;margin-right:8px}
+.thumb.sm{width:34px;height:34px;margin-right:8px}
+.photo-ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 footer{margin-top:28px;font-size:12px;color:var(--muted)}
+@media print{body{background:#fff;color:#000;padding:0}.wrap,dialog,.toast{display:none!important}#printView{display:block!important}#printView h1{font-family:var(--display);font-size:22px;margin:0 0 4px}#printView .sub{font-size:12px;color:#444;margin-bottom:10px}#printView h2{font-size:15px;margin:14px 0 4px;border-bottom:1px solid #000}#printView table{width:100%;border-collapse:collapse;font-size:12px}#printView th,#printView td{text-align:left;padding:3px 6px;border-bottom:1px solid #ccc;vertical-align:top}#printView th{font-size:10px;text-transform:uppercase;letter-spacing:.06em}#printView td.n{text-align:right;font-variant-numeric:tabular-nums}#printView .box{display:inline-block;width:11px;height:11px;border:1px solid #000;margin-right:4px;vertical-align:middle}}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
 </style>
 </head>
@@ -154,14 +169,21 @@ footer{margin-top:28px;font-size:12px;color:var(--muted)}
 <div class="wrap">
 <header>
   <h1>Family Emergency Supply Tracker</h1>
-  <div class="sub">Sized for <b><input id="people" type="number" min="1" max="12" value="4" aria-label="people"></b> people · 1 gal water and 2,000 cal per person per day</div>
+  <div class="sub">Sized for <b id="hhSummary">4 people · 8,000 cal/day</b> <button class="toggle" id="hhBtn">household</button></div>
   <div class="status" id="status">Saved on this device</div>
   <div class="menu" id="menu"><button class="btn gear" id="menuBtn" aria-haspopup="true" aria-label="Settings" title="Settings">&#9881;</button>
     <div class="pop">
-      <div class="pop-title">Backup</div>
+      <div class="pop-title">Household</div>
+      <button class="btn" id="hhBtn2">People &amp; daily calories</button>
+      <div class="pop-title">Reminders</div>
+      <label class="pop-check"><input type="checkbox" id="notifyOn"> Notify me <input type="number" id="notifyDays" min="1" max="365" value="30" style="width:3.5em"> days before anything expires</label>
+      <p class="pop-note" id="notifyNote"></p>
+      <div class="pop-title">Backup &amp; export</div>
       <p class="pop-note">Data lives in this browser only. Export a backup now and then, and import it on your other devices.</p>
       <button class="btn" id="exportBtn">Export backup (.json)</button>
       <button class="btn" id="importBtn">Import backup</button>
+      <button class="btn" id="csvBtn">Export spreadsheet (.csv)</button>
+      <button class="btn" id="printBtn">Print inventory</button>
       <div class="pop-title">Reset</div>
       <button class="btn" id="resetBtn">Reset to the plan's list</button>
     </div></div>
@@ -179,6 +201,7 @@ footer{margin-top:28px;font-size:12px;color:var(--muted)}
 <div class="toolbar">
   <button class="btn" id="expBtn">Expiring</button>
   <button class="btn" id="micBtn" title="Say an item and its expiration date">&#127908; Speak</button>
+  <button class="btn" id="scanBtn" title="Scan a barcode">&#9641; Scan</button>
   <select id="catFilter" aria-label="Category"><option value="">All categories</option></select>
   <select id="storeFilter" aria-label="Store"><option value="">All stores</option><option value="Sam's">Sam's Club</option><option value="Costco">Costco</option><option value="Either">Either warehouse</option><option value="none">Walmart / online</option></select>
   <select id="stateFilter" aria-label="Status"><option value="">All items</option><option value="todo">Still to buy</option><option value="partial">Partly bought</option><option value="done">Complete</option><option value="exp">Expiring / expired</option></select>
@@ -209,6 +232,31 @@ footer{margin-top:28px;font-size:12px;color:var(--muted)}
     <div class="acts"><button type="button" class="btn" id="dlgCancel">Cancel</button><button type="submit" class="btn primary">Save</button></div>
   </form>
 </dialog>
+<dialog id="hhDlg">
+  <h3>Household</h3>
+  <p class="pop-note" style="max-width:none">Daily calories drive the “food on hand” figure; each person also counts for 1 gallon of water a day. Presets: adult man 2,200 · adult woman 1,800 · teen 2,000–2,400 · child 4–8 1,400 · child 9–13 1,800 · toddler 1,200.</p>
+  <div id="hhRows"></div>
+  <div class="form"><div class="acts"><button type="button" class="btn" id="hhAdd">+ Add person</button><span class="spacer"></span><button type="button" class="btn primary" id="hhDone">Done</button></div></div>
+</dialog>
+<dialog id="scanDlg">
+  <h3>Scan a barcode</h3>
+  <div class="scan-wrap"><video id="scanVideo" playsinline muted autoplay></video><div class="scan-box"></div></div>
+  <div class="mic-status" id="scanStatus">Starting camera…</div>
+  <div id="scanResult" class="scan-result" hidden>
+    <div class="scan-name" id="scanName"></div>
+    <div class="pop-note" id="scanInfo" style="max-width:none"></div>
+    <div class="form">
+      <div class="full"><label for="scanItem">Add to item</label><select id="scanItem"></select></div>
+      <div><label for="scanQty">How many</label><input id="scanQty" type="number" min="1" value="1"></div>
+      <div><label for="scanExp">Expires (optional)</label><input id="scanExp" type="date"></div>
+      <div class="full" id="scanNewWrap" hidden><label for="scanCat">Category for new item</label><select id="scanCat"></select></div>
+      <div class="acts"><button type="button" class="btn" id="scanAgain">Scan next</button><button type="button" class="btn primary" id="scanApply">Add</button></div>
+    </div>
+  </div>
+  <div class="form"><div class="acts"><input id="scanManual" placeholder="or type the barcode" style="flex:1;min-width:0"><button type="button" class="btn" id="scanLookup">Look up</button><button type="button" class="btn" id="scanClose">Close</button></div></div>
+</dialog>
+<dialog id="photoDlg"><img id="photoBig" alt="item photo" style="max-width:100%;border-radius:6px"><div class="form"><div class="acts"><button type="button" class="btn" id="photoClose">Close</button></div></div></dialog>
+<div id="printView" hidden></div>
 <dialog id="expDlg">
   <h3 id="expTitle">Expiring</h3>
   <div class="exp-note" id="expNote"></div>
@@ -335,7 +383,7 @@ const money=n=>"$"+Math.round(n).toLocaleString();
 const dlg=$("dlg"), form=$("form");
 
 function load(){try{const s=JSON.parse(localStorage.getItem(KEY)||"null");if(s&&s.items){items=s.items;settings=s.settings||settings;return}}catch(e){}items=seedItems();settings.seedVersion=SEED_VERSION}
-function persist(){try{localStorage.setItem(KEY,JSON.stringify({items,settings,saved:new Date().toISOString()}));$("status").textContent="Saved on this device"}catch(e){$("status").textContent="Couldn't save (storage blocked)"}}
+function persist(){try{const json=JSON.stringify({items,settings,saved:new Date().toISOString()});localStorage.setItem(KEY,json);$("status").textContent=json.length>3500000?"Saved · storage nearly full, remove some photos":"Saved on this device"}catch(e){$("status").textContent="Couldn't save — storage full (remove some photos)";toast("Storage full: remove a photo or two")}}
 
 // chips / selects
 CATS.forEach(c=>{const o=document.createElement("option");o.value=c;o.textContent=c;$("catFilter").appendChild(o);$("fCat").appendChild(o.cloneNode(true))});
@@ -354,10 +402,11 @@ function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&l
 function render(){
   saveFilters();
   const list=Object.values(items);
-  const people=+settings.people||4;
+  const hh=household();const people=hh.people,dailyCal=hh.cal;
   let gal=0,cal=0,done=0,part=0,spent=0,planned=0,expSoon=[],expired=[];
   list.forEach(it=>{const h=+it.have||0,t=+it.target||0,p=+it.price||0;gal+=h*(+it.gallons||0);cal+=h*(+it.calories||0);spent+=h*p;planned+=t*p;const s=stateOf(it);if(s==="done")done++;else if(s==="partial")part++;const e=expState(it);if(e==="crit")expired.push(it.name);else if(e==="warn")expSoon.push(it.name)});
-  const wd=gal/people, fd=cal/(people*2000);
+  const wd=gal/people, fd=cal/dailyCal;
+  $("hhSummary").textContent=people+" "+(people===1?"person":"people")+" · "+dailyCal.toLocaleString()+" cal/day";
   $("tWater").innerHTML=wd.toFixed(1)+"<small>days</small>";$("bWater").style.width=Math.min(100,wd/14*100)+"%";$("hWater").textContent=Math.round(gal)+" gal stored · goal 14 days ("+(people*14)+" gal)";
   $("tFood").innerHTML=fd.toFixed(1)+"<small>days</small>";$("bFood").style.width=Math.min(100,fd/30*100)+"%";$("hFood").textContent=Math.round(cal).toLocaleString()+" cal stored · goal 30 days";
   $("tItems").innerHTML=done+"<small>/ "+list.length+"</small>";$("bItems").style.width=(list.length?done/list.length*100:0)+"%";$("hItems").textContent=part+" partially bought";
@@ -388,7 +437,7 @@ function rowEl(it){
   const line=+it.target*(+it.price||0);
   const pill=s==="done"?'<span class="pill good">Complete</span>':s==="partial"?'<span class="pill warn">Partial</span>':'<span class="pill">To buy</span>';
   const ep=e==="crit"?'<span class="pill crit">Expired '+fmtDate(it.expires)+'</span>':e==="warn"?'<span class="pill warn">Expires '+fmtDate(it.expires)+'</span>':it.expires?'<span>Exp. '+fmtDate(it.expires)+'</span>':'';
-  el.innerHTML='<div class="name">'+nameHtml+'</div>'
+  el.innerHTML='<div class="name">'+(it.photo?'<img src="'+it.photo+'" class="thumb sm" data-a="photo" alt="">':'')+nameHtml+'</div>'
    +'<div class="qty"><button aria-label="one less" data-a="dec">−</button><div class="n">'+(+it.have||0)+' <small>/ '+(+it.target||0)+'</small></div><button aria-label="one more" data-a="inc">+</button></div>'
    +'<div class="meta">'+pill+(it.store?'<span class="pill store">'+esc(it.store)+'</span>':'')+(it.grade?'<span class="pill grade">'+esc(it.grade)+'</span>':'')+(price?'<span>'+price+'</span>':'')+(line?'<span>line '+money(line)+'</span>':'')+(it.shelf?'<span>'+esc(it.shelf)+' yr shelf</span>':'')+ep+'<button class="toggle" data-a="open">'+(openId===it.id?"close":"details")+'</button></div>'
    +'<div class="more">'
@@ -405,6 +454,7 @@ function rowEl(it){
    +'<div class="full"><label>Name</label><input type="text" data-f="name" value="'+esc(it.name)+'"></div>'
    +'<div class="full"><label>Link</label><input type="url" data-f="link" value="'+esc(it.link||"")+'"></div>'
    +'<div class="full"><label>Notes</label><textarea rows="2" data-f="notes">'+esc(it.notes||"")+'</textarea></div>'
+   +'<div class="full photo-ctl">'+(it.photo?'<img src="'+it.photo+'" class="thumb" data-a="photo" alt="">':'')+'<label class="btn" style="display:inline-block">'+(it.photo?"Replace photo":"Add photo")+'<input type="file" accept="image/*" capture="environment" data-photo hidden></label>'+(it.photo?'<button class="btn" data-a="nophoto">Remove photo</button>':'')+(it.barcodes&&it.barcodes.length?'<span class="pop-note" style="margin:0">Barcodes: '+esc(it.barcodes.join(", "))+'</span>':'')+'</div>'
    +'<div class="acts"><button class="btn" data-a="bought">Mark fully bought today</button><button class="btn danger" data-a="del">Remove item</button></div>'
    +'</div>';
   el.addEventListener("click",ev=>{const a=ev.target.closest("[data-a]");if(!a)return;const act=a.dataset.a;
@@ -412,9 +462,12 @@ function rowEl(it){
     else if(act==="dec")save(it.id,{have:Math.max(0,(+it.have||0)-1)});
     else if(act==="open"){openId=openId===it.id?null:it.id;render()}
     else if(act==="bought"){const d={have:+it.target||0,purchased:today()};if(+it.shelf&&!it.expires){const x=new Date();const y=Math.floor(+it.shelf);x.setFullYear(x.getFullYear()+y);x.setMonth(x.getMonth()+Math.round((+it.shelf-y)*12));d.expires=x.toISOString().slice(0,10)}save(it.id,d);toast("Marked bought")}
+    else if(act==="photo"){$("photoBig").src=it.photo;$("photoDlg").showModal()}
+    else if(act==="nophoto"){save(it.id,{photo:null})}
     else if(act==="del"){if(a.dataset.sure){delete items[it.id];settings.removed=(settings.removed||[]).concat(it.id);openId=null;persist();render();toast("Removed")}else{a.dataset.sure="1";a.textContent="Tap again to remove"}}
   });
   el.querySelectorAll("[data-f]").forEach(inp=>inp.addEventListener("change",()=>{const f=inp.dataset.f;let v=inp.value;if(inp.type==="number")v=v===""?null:+v;const d={};d[f]=v;save(it.id,d)}));
+  const ph=el.querySelector("[data-photo]");if(ph)ph.addEventListener("change",async()=>{const f=ph.files[0];if(!f)return;try{const data=await shrinkImage(f,420,0.62);save(it.id,{photo:data});toast("Photo saved")}catch(e){toast("Couldn't read that photo")}});
   return el;
 }
 function save(id,patch){items[id]=Object.assign({},items[id],patch);persist();render()}
@@ -425,7 +478,7 @@ $("dlgCancel").onclick=()=>dlg.close();
 form.addEventListener("submit",ev=>{ev.preventDefault();
   const num=id=>$(id).value===""?null:+$(id).value;
   const id="i"+Date.now().toString(36);
-  items[id]={id,name:$("fName").value.trim(),category:$("fCat").value,target:num("fTarget")||0,have:0,price:num("fPrice"),gallons:num("fGal"),calories:num("fCal"),shelf:num("fShelf"),store:$("fStore").value||null,grade:$("fGrade").value.trim()||null,link:$("fLink").value.trim()||null,notes:$("fNotes").value.trim()||null,purchased:null,expires:null};
+  items[id]={id,name:$("fName").value.trim(),category:$("fCat").value,target:num("fTarget")||0,have:0,price:num("fPrice"),gallons:num("fGal"),calories:num("fCal"),shelf:num("fShelf"),store:$("fStore").value||null,grade:$("fGrade").value.trim()||null,link:$("fLink").value.trim()||null,notes:$("fNotes").value.trim()||null,purchased:null,expires:null,barcodes:[]};
   dlg.close();persist();render();toast("Added")});
 
 // --- expiring view ---
@@ -505,18 +558,77 @@ $("micCancel").onclick=()=>{stopListening();micDlg.close()};
 $("micSave").onclick=()=>{let n=0;entries.filter(e=>e.on&&e.itemId&&(e.date||e.have!=null)).forEach(e=>{const patch={};if(e.date)patch.expires=e.date;if(e.have!=null)patch.have=e.have;if(!items[e.itemId].purchased&&(e.have||e.date))patch.purchased=today();save(e.itemId,patch);n++});entries=entries.filter(e=>!e.on);lastHeard="";renderEntries();toast(n+" item"+(n===1?"":"s")+" updated");if(!entries.length){stopListening();micDlg.close();expiringPopup()}};
 micDlg.addEventListener("close",stopListening);
 
-$("people").addEventListener("change",e=>{settings.people=Math.max(1,+e.target.value||4);persist();render()});
+// --- household ---
+const PRESETS=[["Adult (man)",2200],["Adult (woman)",1800],["Teen (boy)",2400],["Teen (girl)",2000],["Child 9–13",1800],["Child 4–8",1400],["Toddler",1200],["Custom",0]];
+function household(){const m=settings.members;if(!m||!m.length){const n=Math.max(1,+settings.people||4);return{people:n,cal:n*2000}}return{people:m.length,cal:m.reduce((a,x)=>a+(+x.cal||0),0)||1}}
+function ensureMembers(){if(!settings.members||!settings.members.length){const n=Math.max(1,+settings.people||4);settings.members=[];for(let i=0;i<n;i++)settings.members.push({name:"Person "+(i+1),kind:"Adult (man)",cal:2000})}}
+function renderHH(){ensureMembers();const host=$("hhRows");host.innerHTML="";settings.members.forEach((m,i)=>{const row=document.createElement("div");row.className="hh-row";
+  row.innerHTML='<div><label>Name</label><input data-k="name" value="'+esc(m.name||"")+'"></div><div><label>Type</label><select data-k="kind">'+PRESETS.map(p=>'<option'+(m.kind===p[0]?" selected":"")+'>'+p[0]+'</option>').join("")+'</select></div><div><label>Cal/day</label><input type="number" min="0" step="100" data-k="cal" value="'+(+m.cal||0)+'"></div><button class="btn danger" data-del aria-label="remove">×</button>';
+  row.querySelectorAll("[data-k]").forEach(inp=>inp.onchange=()=>{const k=inp.dataset.k;m[k]=inp.type==="number"?+inp.value:inp.value;if(k==="kind"){const pr=PRESETS.find(p=>p[0]===m.kind);if(pr&&pr[1])m.cal=pr[1]}settings.people=settings.members.length;persist();renderHH();render()});
+  row.querySelector("[data-del]").onclick=()=>{settings.members.splice(i,1);settings.people=settings.members.length;persist();renderHH();render()};host.appendChild(row)});
+  const hh=household();const t=document.createElement("div");t.className="hh-total";t.textContent=hh.people+" people · "+hh.cal.toLocaleString()+" cal/day · "+hh.people+" gal water/day";host.appendChild(t)}
+function openHH(){renderHH();$("menu").classList.remove("open");$("hhDlg").showModal()}
+$("hhBtn").onclick=openHH;$("hhBtn2").onclick=openHH;
+$("hhAdd").onclick=()=>{ensureMembers();settings.members.push({name:"Person "+(settings.members.length+1),kind:"Child 9–13",cal:1800});settings.people=settings.members.length;persist();renderHH();render()};
+$("hhDone").onclick=()=>$("hhDlg").close();
+
+// --- photos ---
+function shrinkImage(file,max,q){return new Promise((res,rej)=>{const img=new Image();const url=URL.createObjectURL(file);img.onload=()=>{const r=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement("canvas");c.width=Math.round(img.width*r);c.height=Math.round(img.height*r);c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);res(c.toDataURL("image/jpeg",q))};img.onerror=rej;img.src=url})}
+$("photoClose").onclick=()=>$("photoDlg").close();
+
+// --- CSV + print ---
+function csvCell(v){v=v==null?"":String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+function downloadText(name,text,type){const blob=new Blob([text],{type});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
+$("csvBtn").onclick=()=>{$("menu").classList.remove("open");const cols=["category","name","have","target","price","store","grade","purchased","expires","shelf","gallons","calories","link","notes"];const rows=[cols.join(",")];Object.values(items).sort((a,b)=>CATS.indexOf(a.category)-CATS.indexOf(b.category)||a.name.localeCompare(b.name)).forEach(it=>rows.push(cols.map(c=>csvCell(it[c])).join(",")));downloadText("supply-inventory-"+today()+".csv",rows.join("\n"),"text/csv");toast("Spreadsheet downloaded")};
+$("printBtn").onclick=()=>{$("menu").classList.remove("open");const hh=household();let h="<h1>Family Emergency Supply Inventory</h1><div class=sub>Printed "+fmtDate(today())+" · "+hh.people+" people · "+hh.cal.toLocaleString()+" cal/day · "+$("tWater").textContent.replace("days"," days water")+" · "+$("tFood").textContent.replace("days"," days food")+"</div>";
+  CATS.forEach(cat=>{const rows=Object.values(items).filter(it=>it.category===cat).sort((a,b)=>a.name.localeCompare(b.name));if(!rows.length)return;h+="<h2>"+esc(cat)+"</h2><table><tr><th></th><th>Item</th><th>Have</th><th>Target</th><th>Store</th><th>Expires</th><th>Notes</th></tr>";rows.forEach(it=>{h+="<tr><td><span class=box></span></td><td>"+esc(it.name)+"</td><td class=n>"+(+it.have||0)+"</td><td class=n>"+(+it.target||0)+"</td><td>"+esc(it.store||"")+"</td><td>"+(it.expires?fmtDate(it.expires):"")+"</td><td>"+esc(it.notes||"")+"</td></tr>"});h+="</table>"});
+  $("printView").innerHTML=h;$("printView").hidden=false;setTimeout(()=>{window.print();$("printView").hidden=true},50)};
+
+// --- notifications ---
+async function syncNotifySettings(){const n=settings.notify||{on:false,days:30};$("notifyOn").checked=!!n.on;$("notifyDays").value=n.days||30;const note=$("notifyNote");
+  if(!("Notification" in window)){note.textContent="This browser can't show notifications. Add the app to your home screen first (iPhone: Share → Add to Home Screen).";$("notifyOn").disabled=true;return}
+  if(n.on&&Notification.permission!=="granted")note.textContent="Permission not granted yet — tap the checkbox again.";else if(n.on)note.textContent=("periodicSync" in (await navigator.serviceWorker.ready).__proto__||"periodicSync" in ServiceWorkerRegistration.prototype)?"On. Checks daily in the background on Android; on iPhone you'll get it when you open the app.":"On. You'll be notified when you open the app.";else note.textContent="Off."}
+$("notifyOn").onchange=async e=>{settings.notify=Object.assign({days:30},settings.notify,{on:e.target.checked});if(e.target.checked&&"Notification" in window){const p=await Notification.requestPermission();if(p!=="granted"){settings.notify.on=false;e.target.checked=false;toast("Notifications were blocked")}else{try{const reg=await navigator.serviceWorker.ready;if("periodicSync" in reg)await reg.periodicSync.register("check-expiring",{minInterval:24*3600*1000})}catch(x){}}}persist();syncNotifySettings();checkNotify()};
+$("notifyDays").onchange=e=>{settings.notify=Object.assign({on:false},settings.notify,{days:Math.max(1,+e.target.value||30)});persist();checkNotify()};
+async function publishExpiring(){try{const n=settings.notify||{};const data={days:n.days||30,on:!!n.on,items:Object.values(items).filter(it=>it.expires).map(it=>({name:it.name,expires:it.expires}))};const c=await caches.open("supply-data");await c.put("./expiring.json",new Response(JSON.stringify(data),{headers:{"Content-Type":"application/json"}}))}catch(e){}}
+async function checkNotify(){publishExpiring();const n=settings.notify||{};if(!n.on||!("Notification" in window)||Notification.permission!=="granted")return;const due=expiringItems().filter(r=>r.days<=(n.days||30));if(!due.length)return;let last="";try{last=localStorage.getItem("supplyTracker.notified")||""}catch(e){}if(last===today())return;try{localStorage.setItem("supplyTracker.notified",today())}catch(e){}
+  const body=due.slice(0,4).map(r=>r.it.name+(r.days<0?" (expired)":" in "+r.days+" d")).join(", ")+(due.length>4?" +"+(due.length-4)+" more":"");try{const reg=await navigator.serviceWorker.ready;reg.showNotification("Supplies expiring",{body,icon:"icon-192.png",badge:"icon-192.png",tag:"expiring"})}catch(e){try{new Notification("Supplies expiring",{body,icon:"icon-192.png"})}catch(x){}}}
+
+// --- barcode scanning ---
+const scanDlg=$("scanDlg");let scanStream=null,scanTimer=null,zxReader=null,scanCode=null,scanProduct=null,scanPaused=false;
+CATS.forEach(c=>{const o=document.createElement("option");o.value=c;o.textContent=c;$("scanCat").appendChild(o)});
+function loadScript(urls){return new Promise((res,rej)=>{const tryNext=i=>{if(i>=urls.length)return rej();const sc=document.createElement("script");sc.src=urls[i];sc.onload=res;sc.onerror=()=>tryNext(i+1);document.head.appendChild(sc)};tryNext(0)})}
+async function openScanner(){$("scanResult").hidden=true;$("scanStatus").textContent="Starting camera…";scanDlg.showModal();scanPaused=false;
+  try{scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280}}});const v=$("scanVideo");v.srcObject=scanStream;await v.play()}catch(e){$("scanStatus").textContent="Camera not available ("+(e.name||"error")+"). Type the barcode below instead.";return}
+  if("BarcodeDetector" in window){const det=new BarcodeDetector({formats:["ean_13","upc_a","upc_e","ean_8","code_128"]});$("scanStatus").textContent="Point the camera at a barcode.";scanTimer=setInterval(async()=>{if(scanPaused||!scanStream)return;try{const codes=await det.detect($("scanVideo"));if(codes.length)onCode(codes[0].rawValue)}catch(e){}},250)}
+  else{$("scanStatus").textContent="Loading scanner…";try{if(!window.ZXing)await loadScript(["https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js","https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"]);zxReader=new ZXing.BrowserMultiFormatReader();$("scanStatus").textContent="Point the camera at a barcode.";zxReader.decodeFromStream(scanStream,$("scanVideo"),(r,err)=>{if(r&&!scanPaused)onCode(r.getText())})}catch(e){$("scanStatus").textContent="Scanner couldn't load (no connection?). Type the barcode below."}}}
+function closeScanner(){if(scanTimer)clearInterval(scanTimer);scanTimer=null;if(zxReader){try{zxReader.reset()}catch(e){}zxReader=null}if(scanStream){scanStream.getTracks().forEach(t=>t.stop());scanStream=null}}
+async function onCode(code){code=String(code).replace(/\D/g,"");if(!code||code===scanCode&&scanPaused)return;scanPaused=true;scanCode=code;if(navigator.vibrate)navigator.vibrate(60);
+  const known=Object.values(items).find(it=>(it.barcodes||[]).includes(code));$("scanResult").hidden=false;$("scanNewWrap").hidden=true;$("scanExp").value="";$("scanQty").value=1;
+  const sel=$("scanItem");const fill=(matches,selId)=>{sel.innerHTML='<option value="__new">＋ Add as a new item</option>'+itemOptions(matches,selId)};
+  if(known){$("scanName").textContent=known.name;$("scanInfo").textContent="Known barcode "+code+".";fill([{it:known}],known.id);$("scanStatus").textContent="Found it.";return}
+  $("scanName").textContent="Barcode "+code;$("scanInfo").textContent="Looking up…";fill([],"");scanProduct=null;
+  try{const r=await fetch("https://world.openfoodfacts.org/api/v2/product/"+code+".json?fields=product_name,brands,quantity,product_quantity,nutriments");const j=await r.json();if(j.status===1&&j.product){const pd=j.product;const name=[pd.brands?pd.brands.split(",")[0]:"",pd.product_name||""].filter(Boolean).join(" ")+(pd.quantity?", "+pd.quantity:"");const kcal100=pd.nutriments&&pd.nutriments["energy-kcal_100g"];const grams=+pd.product_quantity||0;const cal=kcal100&&grams?Math.round(kcal100*grams/100):null;scanProduct={name,cal};$("scanName").textContent=name||("Barcode "+code);$("scanInfo").textContent=(cal?"About "+cal.toLocaleString()+" calories per package. ":"")+"Pick the item this belongs to, or add it as new.";const m=matchItems(pd.product_name||name);fill(m,m.length?m[0].it.id:"__new");if(!m.length)$("scanNewWrap").hidden=false}else{$("scanInfo").textContent="Not in the product database. Pick the item it belongs to, or add it as new.";$("scanNewWrap").hidden=false}}
+  catch(e){$("scanInfo").textContent="Couldn't look it up (offline?). Pick the item it belongs to, or add it as new.";$("scanNewWrap").hidden=false}
+  $("scanStatus").textContent="Found a barcode."}
+$("scanItem").onchange=()=>{$("scanNewWrap").hidden=$("scanItem").value!=="__new"};
+$("scanApply").onclick=()=>{let id=$("scanItem").value;const qty=Math.max(1,+$("scanQty").value||1),exp=$("scanExp").value||null;
+  if(id==="__new"){id="i"+Date.now().toString(36);const nm=scanProduct&&scanProduct.name||$("scanName").textContent;items[id]={id,name:nm,category:$("scanCat").value,target:qty,have:0,price:null,gallons:null,calories:scanProduct&&scanProduct.cal||null,shelf:null,store:null,grade:null,link:null,notes:null,purchased:null,expires:null,barcodes:[]}}
+  if(!items[id]){toast("Pick an item");return}const it=items[id];const patch={have:(+it.have||0)+qty,barcodes:Array.from(new Set((it.barcodes||[]).concat(scanCode)))};if(exp)patch.expires=exp;if(!it.purchased)patch.purchased=today();if(!it.calories&&scanProduct&&scanProduct.cal)patch.calories=scanProduct.cal;save(id,patch);toast("+"+qty+" "+items[id].name);$("scanResult").hidden=true;scanPaused=false;$("scanStatus").textContent="Point the camera at the next barcode."};
+$("scanAgain").onclick=()=>{$("scanResult").hidden=true;scanPaused=false;$("scanStatus").textContent="Point the camera at a barcode."};
+$("scanLookup").onclick=()=>{const c=$("scanManual").value.trim();if(c){scanPaused=false;onCode(c);$("scanManual").value=""}};
+$("scanBtn").onclick=openScanner;$("scanClose").onclick=()=>{closeScanner();scanDlg.close()};scanDlg.addEventListener("close",closeScanner);
 
 // menu: export / import / reset
 const menu=$("menu");$("menuBtn").onclick=()=>menu.classList.toggle("open");
 document.addEventListener("click",e=>{if(!menu.contains(e.target))menu.classList.remove("open")});
 $("exportBtn").onclick=()=>{menu.classList.remove("open");const blob=new Blob([JSON.stringify({items,settings,exported:new Date().toISOString()},null,1)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="supply-tracker-"+today()+".json";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);toast("Backup downloaded")};
 $("importBtn").onclick=()=>{menu.classList.remove("open");$("importFile").click()};
-$("importFile").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.items)throw 0;items=d.items;settings=d.settings||settings;$("people").value=settings.people||4;persist();render();toast("Backup imported")}catch(x){toast("That file isn't a tracker backup")}};r.readAsText(f);e.target.value=""};
+$("importFile").onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.items)throw 0;items=d.items;settings=d.settings||settings;persist();render();syncNotifySettings();toast("Backup imported")}catch(x){toast("That file isn't a tracker backup")}};r.readAsText(f);e.target.value=""};
 let resetArmed=false;
-$("resetBtn").onclick=()=>{if(!resetArmed){resetArmed=true;$("resetBtn").textContent="Tap again to reset (erases progress)";setTimeout(()=>{resetArmed=false;$("resetBtn").textContent="Reset to the plan's list"},4000);return}menu.classList.remove("open");items=seedItems();settings={people:4,seedVersion:SEED_VERSION};$("people").value=4;persist();render();toast("Reset to plan")};
+$("resetBtn").onclick=()=>{if(!resetArmed){resetArmed=true;$("resetBtn").textContent="Tap again to reset (erases progress)";setTimeout(()=>{resetArmed=false;$("resetBtn").textContent="Reset to the plan's list"},4000);return}menu.classList.remove("open");items=seedItems();settings={people:4,seedVersion:SEED_VERSION};persist();render();syncNotifySettings();toast("Reset to plan")};
 
-load();migrate();$("people").value=settings.people||4;render();expiringPopup();
+load();migrate();render();syncNotifySettings();expiringPopup();checkNotify();
 })();
 </script>
 <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{})}</script>
