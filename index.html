@@ -434,8 +434,8 @@ function expState(it){if(!it.expires)return"";const d=(new Date(it.expires)-new 
 function fmtDate(s){if(!s)return"";const d=new Date(s+"T00:00:00");return d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}
 function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 
-function render(){
-  saveFilters();
+function render(){renderSummary();renderList()}
+function renderSummary(){
   const list=Object.values(items);
   $("tileWater").classList.toggle("on",filterCat==="Water");$("tileNext").classList.toggle("on",filterState==="todo");$("tileFood").classList.toggle("on",filterCat==="Food:*");
   const hh=household();const people=hh.people,dailyCal=hh.cal;
@@ -453,6 +453,10 @@ function render(){
   const al=$("alert");al.className="alert";
   if(expired.length){al.classList.add("show","crit");al.innerHTML="<b>Expired:</b> "+esc(expired.join(", "))+". Replace and update the date."}
   else if(expSoon.length){al.classList.add("show","warn");al.innerHTML="<b>Expiring within 90 days:</b> "+esc(expSoon.join(", "))+". Eat, rotate, and buy fresh."}
+}
+function renderList(){
+  saveFilters();
+  const list=Object.values(items);
   const host=$("list");host.innerHTML="";
   const qt=searchQ?searchQ.split(/\s+/):[];const hay=it=>(it.name+" "+(it.notes||"")+" "+(it.store||"")+" "+(it.grade||"")+" "+it.category+" "+(it.barcodes||[]).join(" ")).toLowerCase();
   const shown=list.filter(it=>(!qt.length||(h=>qt.every(w=>h.includes(w)))(hay(it)))&&(!filterCat||(filterCat==="Food:*"?it.category.startsWith("Food:"):it.category===filterCat))&&(!filterState||(filterState==="exp"?!!expState(it):stateOf(it)===filterState))&&(!filterStore||(filterStore==="none"?!it.store:it.store===filterStore)));
@@ -469,6 +473,12 @@ function render(){
   });
 }
 
+function metaHtml(it){const s=stateOf(it),e=expState(it);
+  const price=+it.price?money(+it.price)+" ea":"";
+  const line=+it.target*(+it.price||0);
+  const pill=s==="done"?'<span class="pill good">Complete</span>':s==="partial"?'<span class="pill warn">Partial</span>':'<span class="pill">To buy</span>';
+  const ep=e==="crit"?'<span class="pill crit">Expired '+fmtDate(it.expires)+'</span>':e==="warn"?'<span class="pill warn">Expires '+fmtDate(it.expires)+'</span>':it.expires?'<span>Exp. '+fmtDate(it.expires)+'</span>':'';
+  return pill+(it.store?'<span class="pill store">'+esc(it.store)+'</span>':'')+(it.grade?'<span class="pill grade">'+esc(it.grade)+'</span>':'')+(price?'<span>'+price+'</span>':'')+(line?'<span>line '+money(line)+'</span>':'')+(it.shelf?'<span>'+esc(it.shelf)+' yr shelf</span>':'')+ep+'<button class="toggle" data-a="open">'+(openId===it.id?"close":"details")+'</button>';}
 function rowEl(it){
   const s=stateOf(it),e=expState(it);
   const el=document.createElement("div");el.className="row "+s+(openId===it.id?" open":"");
@@ -479,7 +489,7 @@ function rowEl(it){
   const ep=e==="crit"?'<span class="pill crit">Expired '+fmtDate(it.expires)+'</span>':e==="warn"?'<span class="pill warn">Expires '+fmtDate(it.expires)+'</span>':it.expires?'<span>Exp. '+fmtDate(it.expires)+'</span>':'';
   el.innerHTML='<div class="name">'+(it.photo?'<img src="'+it.photo+'" class="thumb sm" data-a="photo" alt="">':'')+nameHtml+'</div>'
    +'<div class="qty"><button aria-label="one less" data-a="dec">−</button><div class="n">'+(+it.have||0)+' <small>/ '+(+it.target||0)+'</small></div><button aria-label="one more" data-a="inc">+</button></div>'
-   +'<div class="meta">'+pill+(it.store?'<span class="pill store">'+esc(it.store)+'</span>':'')+(it.grade?'<span class="pill grade">'+esc(it.grade)+'</span>':'')+(price?'<span>'+price+'</span>':'')+(line?'<span>line '+money(line)+'</span>':'')+(it.shelf?'<span>'+esc(it.shelf)+' yr shelf</span>':'')+ep+'<button class="toggle" data-a="open">'+(openId===it.id?"close":"details")+'</button></div>'
+   +'<div class="meta">'+metaHtml(it)+'</div>'
    +'<div class="more">'
    +'<div><label>Have</label><input type="number" min="0" data-f="have" value="'+(+it.have||0)+'"></div>'
    +'<div><label>Target</label><input type="number" min="0" data-f="target" value="'+(+it.target||0)+'"></div>'
@@ -507,7 +517,12 @@ function rowEl(it){
     else if(act==="nophoto"){save(it.id,{photo:null})}
     else if(act==="del"){if(a.dataset.sure){delete items[it.id];settings.removed=(settings.removed||[]).concat(it.id);openId=null;persist();render();toast("Removed")}else{a.dataset.sure="1";a.textContent="Tap again to remove"}}
   });
-  el.querySelectorAll("[data-f]").forEach(inp=>inp.addEventListener("change",()=>{const f=inp.dataset.f;let v=inp.value;if(inp.type==="number")v=v===""?null:+v;const d={};d[f]=v;save(it.id,d)}));
+  el.querySelectorAll("[data-f]").forEach(inp=>inp.addEventListener("change",()=>{const f=inp.dataset.f;let v=inp.value;if(inp.type==="number")v=v===""?null:+v;const d={};d[f]=v;
+    if(f==="category"){save(it.id,d);return}
+    items[it.id]=Object.assign({},items[it.id],d);const cur=items[it.id];persist();renderSummary();
+    el.className="row "+stateOf(cur)+" open";el.querySelector(".meta").innerHTML=metaHtml(cur);el.querySelector(".qty .n").innerHTML=(+cur.have||0)+' <small>/ '+(+cur.target||0)+'</small>';
+    if(f==="name"){const nm=el.querySelector(".name");nm.innerHTML=(cur.photo?'<img src="'+cur.photo+'" class="thumb sm" data-a="photo" alt="">':'')+(cur.link?'<a href="'+esc(cur.link)+'" target="_blank" rel="noopener">'+esc(cur.name)+'</a>':esc(cur.name))}
+    Object.assign(it,cur)}));
   el.querySelectorAll('.more input[data-f]:not([data-f="name"]), .more textarea[data-f]').forEach(inp=>{const w=document.createElement("span");w.className="cf";inp.parentNode.insertBefore(w,inp);w.appendChild(inp);const x=document.createElement("button");x.type="button";x.className="x";x.title="Clear";x.setAttribute("aria-label","Clear field");x.textContent="×";x.onclick=()=>{inp.value="";inp.dispatchEvent(new Event("change"))};w.appendChild(x)});
   const ph=el.querySelector("[data-photo]");if(ph)ph.addEventListener("change",async()=>{const f=ph.files[0];if(!f)return;try{const data=await shrinkImage(f,420,0.62);save(it.id,{photo:data});toast("Photo saved")}catch(e){toast("Couldn't read that photo")}});
   return el;
