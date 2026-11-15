@@ -81,6 +81,9 @@ h1{font-family:var(--display);font-weight:700;font-size:30px;letter-spacing:.3px
 .chip{font:inherit;font-size:13px;font-weight:500;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer}
 .chip.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
 .toolbar select{font:inherit;font-size:13px;padding:5px 6px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--fg);min-width:0;width:100%}
+.search{position:relative;flex:1 1 100%;min-width:0}
+.search input{width:100%;font:inherit;font-size:14px;padding:7px 10px;-webkit-appearance:none;appearance:none;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--fg)}
+.search .x{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:22px;height:22px;border:0;border-radius:50%;background:var(--line);color:var(--fg);font-size:13px;line-height:22px;text-align:center;cursor:pointer;padding:0}
 .filters{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;flex:1 1 100%;min-width:0}
 .btn{font:inherit;font-size:13px;font-weight:600;padding:6px 12px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer}
 .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
@@ -217,6 +220,7 @@ footer{margin-top:28px;font-size:12px;color:var(--muted)}
 <div class="alert" id="alert"></div>
 
 <div class="toolbar">
+  <div class="search"><input id="search" type="search" placeholder="Search items, notes, barcodes…" aria-label="Search" autocomplete="off"></div>
   <button class="btn" id="expBtn">Expiring</button>
   <div class="filters">
   <select id="catFilter" aria-label="Category"><option value="">Categories</option></select>
@@ -402,7 +406,7 @@ function migrate(){const v=+settings.seedVersion||1;if(v>=SEED_VERSION)return;co
 
 const $=id=>document.getElementById(id);
 const KEY="supplyTracker.v1";
-let items={}, settings={people:4}, filterCat="", filterState="", filterStore="", openId=null;
+let items={}, settings={people:4}, searchQ="", filterCat="", filterState="", filterStore="", openId=null;
 const STORES=["Sam's","Costco","Either","Walmart / online"];
 const today=()=>new Date().toISOString().slice(0,10);
 const money=n=>"$"+Math.round(n).toLocaleString();
@@ -414,6 +418,8 @@ function persist(){try{const json=JSON.stringify({items,settings,saved:new Date(
 // chips / selects
 CATS.forEach(c=>{if(c==="Food: grab-and-go"){const f=document.createElement("option");f.value="Food:*";f.textContent="All food";$("catFilter").appendChild(f)}const o=document.createElement("option");o.value=c;o.textContent=c;$("catFilter").appendChild(o);$("fCat").appendChild(o.cloneNode(true))});
 $("catFilter").onchange=e=>{filterCat=e.target.value;render()};
+$("search").addEventListener("input",e=>{searchQ=e.target.value.trim().toLowerCase();render()});
+$("search").addEventListener("search",()=>{searchQ=$("search").value.trim().toLowerCase();render()});
 $("tileWater").onclick=()=>{filterCat=filterCat==="Water"?"":"Water";$("catFilter").value=filterCat;render();$("list").scrollIntoView({behavior:"smooth",block:"start"})};
 $("tileNext").onclick=()=>{filterState=filterState==="todo"?"":"todo";$("stateFilter").value=filterState;render();$("list").scrollIntoView({behavior:"smooth",block:"start"})};
 $("tileFood").onclick=()=>{filterCat=filterCat==="Food:*"?"":"Food:*";$("catFilter").value=filterCat;render();$("list").scrollIntoView({behavior:"smooth",block:"start"})};
@@ -448,9 +454,10 @@ function render(){
   if(expired.length){al.classList.add("show","crit");al.innerHTML="<b>Expired:</b> "+esc(expired.join(", "))+". Replace and update the date."}
   else if(expSoon.length){al.classList.add("show","warn");al.innerHTML="<b>Expiring within 90 days:</b> "+esc(expSoon.join(", "))+". Eat, rotate, and buy fresh."}
   const host=$("list");host.innerHTML="";
-  const shown=list.filter(it=>(!filterCat||(filterCat==="Food:*"?it.category.startsWith("Food:"):it.category===filterCat))&&(!filterState||(filterState==="exp"?!!expState(it):stateOf(it)===filterState))&&(!filterStore||(filterStore==="none"?!it.store:it.store===filterStore)));
+  const qt=searchQ?searchQ.split(/\s+/):[];const hay=it=>(it.name+" "+(it.notes||"")+" "+(it.store||"")+" "+(it.grade||"")+" "+it.category+" "+(it.barcodes||[]).join(" ")).toLowerCase();
+  const shown=list.filter(it=>(!qt.length||(h=>qt.every(w=>h.includes(w)))(hay(it)))&&(!filterCat||(filterCat==="Food:*"?it.category.startsWith("Food:"):it.category===filterCat))&&(!filterState||(filterState==="exp"?!!expState(it):stateOf(it)===filterState))&&(!filterStore||(filterStore==="none"?!it.store:it.store===filterStore)));
   if(!list.length){host.innerHTML='<div class="empty">No items yet. Tap “Add item”, or use the ⋯ menu to reset to the plan\'s list.</div>';return}
-  if(!shown.length){host.innerHTML='<div class="empty">Nothing matches these filters.</div>';return}
+  if(!shown.length){host.innerHTML='<div class="empty">'+(searchQ?'Nothing matches “'+esc(searchQ)+'”.':'Nothing matches these filters.')+'</div>';return}
   CATS.forEach(cat=>{
     const rows=shown.filter(it=>it.category===cat).sort((a,b)=>a.name.localeCompare(b.name));
     if(!rows.length)return;
