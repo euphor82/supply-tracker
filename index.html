@@ -62,6 +62,12 @@ h1{font-family:var(--display);font-weight:700;font-size:30px;letter-spacing:.3px
 .bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:8px}
 .bar i{display:block;height:100%;background:var(--accent)}
 .bar.g i{background:var(--good)}
+.next{list-style:none;margin:4px 0 0;padding:0;font-size:13px;line-height:1.3}
+.next li{display:flex;gap:6px;align-items:flex-start;padding:2px 0;border-top:1px dashed var(--line);overflow:hidden}
+.next li:first-child{border-top:0}
+.next .g{font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--accent);flex:0 0 2.6em}
+.next .t{min-width:0;font-weight:500;font-size:12px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.next .q{color:var(--muted);font-size:11px;white-space:nowrap}
 .tile .hint{font-size:12px;color:var(--muted);margin-top:5px}
 
 .alert{margin-top:12px;border-radius:6px;padding:10px 12px;font-size:14px;display:none}
@@ -205,7 +211,7 @@ footer{margin-top:28px;font-size:12px;color:var(--muted)}
   <button class="tile click" id="tileWater" type="button"><div class="lbl">Water on hand</div><div class="val" id="tWater">0<small>days</small></div><div class="bar"><i id="bWater" style="width:0%"></i></div><div class="hint" id="hWater">0 gal stored · goal 14 days</div></button>
   <button class="tile click" id="tileFood" type="button"><div class="lbl">Food on hand</div><div class="val" id="tFood">0<small>days</small></div><div class="bar"><i id="bFood" style="width:0%"></i></div><div class="hint" id="hFood">0 cal stored · goal 30 days</div></button>
   <div class="tile"><div class="lbl">Items complete</div><div class="val" id="tItems">0<small>/ 0</small></div><div class="bar g"><i id="bItems" style="width:0%"></i></div><div class="hint" id="hItems">0 partially bought</div></div>
-  <div class="tile"><div class="lbl">Spent so far</div><div class="val" id="tSpent">$0</div><div class="bar"><i id="bSpent" style="width:0%"></i></div><div class="hint" id="hSpent">of $0 planned</div></div>
+  <button class="tile click" id="tileNext" type="button"><div class="lbl">Buy next</div><ol class="next" id="tNext"></ol><div class="hint" id="hSpent">$0 spent of $0 planned</div></button>
 </div>
 
 <div class="alert" id="alert"></div>
@@ -409,6 +415,7 @@ function persist(){try{const json=JSON.stringify({items,settings,saved:new Date(
 CATS.forEach(c=>{if(c==="Food: grab-and-go"){const f=document.createElement("option");f.value="Food:*";f.textContent="All food";$("catFilter").appendChild(f)}const o=document.createElement("option");o.value=c;o.textContent=c;$("catFilter").appendChild(o);$("fCat").appendChild(o.cloneNode(true))});
 $("catFilter").onchange=e=>{filterCat=e.target.value;render()};
 $("tileWater").onclick=()=>{filterCat=filterCat==="Water"?"":"Water";$("catFilter").value=filterCat;render();$("list").scrollIntoView({behavior:"smooth",block:"start"})};
+$("tileNext").onclick=()=>{filterState=filterState==="todo"?"":"todo";$("stateFilter").value=filterState;render();$("list").scrollIntoView({behavior:"smooth",block:"start"})};
 $("tileFood").onclick=()=>{filterCat=filterCat==="Food:*"?"":"Food:*";$("catFilter").value=filterCat;render();$("list").scrollIntoView({behavior:"smooth",block:"start"})};
 $("stateFilter").onchange=e=>{filterState=e.target.value;render()};
 $("storeFilter").onchange=e=>{filterStore=e.target.value;render()};
@@ -424,7 +431,7 @@ function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&l
 function render(){
   saveFilters();
   const list=Object.values(items);
-  $("tileWater").classList.toggle("on",filterCat==="Water");$("tileFood").classList.toggle("on",filterCat==="Food:*");
+  $("tileWater").classList.toggle("on",filterCat==="Water");$("tileNext").classList.toggle("on",filterState==="todo");$("tileFood").classList.toggle("on",filterCat==="Food:*");
   const hh=household();const people=hh.people,dailyCal=hh.cal;
   let gal=0,cal=0,done=0,part=0,spent=0,planned=0,expSoon=[],expired=[];
   list.forEach(it=>{const h=+it.have||0,t=+it.target||0,p=+it.price||0;gal+=h*(+it.gallons||0);cal+=h*(+it.calories||0);spent+=h*p;planned+=t*p;const s=stateOf(it);if(s==="done")done++;else if(s==="partial")part++;const e=expState(it);if(e==="crit")expired.push(it.name);else if(e==="warn")expSoon.push(it.name)});
@@ -433,7 +440,10 @@ function render(){
   $("tWater").innerHTML=wd.toFixed(1)+"<small>days</small>";$("bWater").style.width=Math.min(100,wd/14*100)+"%";$("hWater").textContent=Math.round(gal)+" gal stored · goal 14 days ("+(people*14)+" gal)";
   $("tFood").innerHTML=fd.toFixed(1)+"<small>days</small>";$("bFood").style.width=Math.min(100,fd/30*100)+"%";$("hFood").textContent=Math.round(cal).toLocaleString()+" cal stored · goal 30 days";
   $("tItems").innerHTML=done+"<small>/ "+list.length+"</small>";$("bItems").style.width=(list.length?done/list.length*100:0)+"%";$("hItems").textContent=part+" partially bought";
-  $("tSpent").textContent=money(spent);$("bSpent").style.width=(planned?Math.min(100,spent/planned*100):0)+"%";$("hSpent").textContent="of "+money(planned)+" planned";
+  $("hSpent").textContent=money(spent)+" spent of "+money(planned)+" planned";
+  {const rank=it=>{const g=(it.grade||"").toUpperCase();const gr=g.startsWith("MUST")?0:g.startsWith("A")?1:g.startsWith("B")?2:g.startsWith("C")?4:3;const c=it.category==="Water"?0:it.category.startsWith("Food")?1:it.category==="First aid & sanitation"?2:3;return gr*10+c};
+    const next=list.filter(it=>stateOf(it)!=="done"&&(+it.target||0)>0).sort((a,b)=>rank(a)-rank(b)||((+a.have||0)/(+a.target||1))-((+b.have||0)/(+b.target||1))||a.name.localeCompare(b.name)).slice(0,3);
+    const ol=$("tNext");ol.innerHTML=next.length?next.map(it=>{const g=(it.grade||"").split(" ")[0];const left=(+it.target||0)-(+it.have||0);return '<li><span class="g">'+(g?esc(g):"—")+'</span><span class="t" title="'+esc(it.name)+'">'+esc(it.name)+'</span><span class="q">&times;'+left+'</span></li>'}).join(""):'<li><span class="t">Everything on the list is bought</span></li>'}
   const al=$("alert");al.className="alert";
   if(expired.length){al.classList.add("show","crit");al.innerHTML="<b>Expired:</b> "+esc(expired.join(", "))+". Replace and update the date."}
   else if(expSoon.length){al.classList.add("show","warn");al.innerHTML="<b>Expiring within 90 days:</b> "+esc(expSoon.join(", "))+". Eat, rotate, and buy fresh."}
@@ -606,7 +616,7 @@ document.querySelectorAll('#form input:not(#fName), #scanExp, #scanQty').forEach
 function csvCell(v){v=v==null?"":String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
 function downloadText(name,text,type){const blob=new Blob([text],{type});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
 $("csvBtn").onclick=()=>{$("menu").classList.remove("open");const cols=["category","name","have","target","price","store","grade","purchased","expires","shelf","gallons","calories","link","notes"];const rows=[cols.join(",")];Object.values(items).sort((a,b)=>CATS.indexOf(a.category)-CATS.indexOf(b.category)||a.name.localeCompare(b.name)).forEach(it=>rows.push(cols.map(c=>csvCell(it[c])).join(",")));downloadText("supply-inventory-"+today()+".csv",rows.join("\n"),"text/csv");toast("Spreadsheet downloaded")};
-$("printBtn").onclick=()=>{$("menu").classList.remove("open");const hh=household();let h="<h1>Prepper — Supply Inventory</h1><div class=sub>Printed "+fmtDate(today())+" · "+hh.people+" people · "+hh.cal.toLocaleString()+" cal/day · "+$("tWater").textContent.replace("days"," days water")+" · "+$("tFood").textContent.replace("days"," days food")+"</div>";
+$("printBtn").onclick=()=>{$("menu").classList.remove("open");const hh=household();let h="<h1>Prepper — Supply Inventory</h1><div class=sub>Printed "+fmtDate(today())+" · "+hh.people+" people · "+hh.cal.toLocaleString()+" cal/day · "+$("tWater").textContent.replace("days"," days water")+" · "+$("tFood").textContent.replace("days"," days food")+" · "+$("hSpent").textContent+"</div>";
   CATS.forEach(cat=>{const rows=Object.values(items).filter(it=>it.category===cat).sort((a,b)=>a.name.localeCompare(b.name));if(!rows.length)return;h+="<h2>"+esc(cat)+"</h2><table><tr><th></th><th>Item</th><th>Have</th><th>Target</th><th>Store</th><th>Expires</th><th>Notes</th></tr>";rows.forEach(it=>{h+="<tr><td><span class=box></span></td><td>"+esc(it.name)+"</td><td class=n>"+(+it.have||0)+"</td><td class=n>"+(+it.target||0)+"</td><td>"+esc(it.store||"")+"</td><td>"+(it.expires?fmtDate(it.expires):"")+"</td><td>"+esc(it.notes||"")+"</td></tr>"});h+="</table>"});
   $("printView").innerHTML=h;$("printView").hidden=false;setTimeout(()=>{window.print();$("printView").hidden=true},50)};
 
